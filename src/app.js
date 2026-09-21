@@ -1109,6 +1109,14 @@ const App = (() => {
   function onKey(e) {
     const tag = document.activeElement?.tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
+    // Alt+A: Activate Area Solver (auto-switches to pen, then calculates on shape completion)
+    if (e.altKey && (e.key === 'a' || e.key === 'A')) {
+      e.preventDefault();
+      if (typeof AreaSolver !== 'undefined') AreaSolver.activate();
+      return;
+    }
+
     if (e.ctrlKey || e.metaKey) {
       const key = e.key.toLowerCase();
       if (e.shiftKey && key === 'n') {
@@ -1180,6 +1188,9 @@ const App = (() => {
       if (pdfModal && !pdfModal.classList.contains('hidden')) {
         closePdfModal();
         return;
+      }
+      if (typeof AreaSolver !== 'undefined') {
+        AreaSolver.close();
       }
       if (typeof BoardClipboard !== 'undefined' && BoardClipboard.clearSelection) {
         BoardClipboard.clearSelection();

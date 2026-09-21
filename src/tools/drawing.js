@@ -179,6 +179,10 @@ const Drawing = (() => {
           size: (tool === 'highlighter') ? penSz * 5 : penSz,
           points: points.slice()
         });
+        // Notify AreaSolver if it's waiting for a drawn shape
+        if (typeof AreaSolver !== 'undefined' && AreaSolver.onStrokeEnd) {
+          AreaSolver.onStrokeEnd();
+        }
       }
     } else if (tool === 'eraser') {
       if (typeof Canvas !== 'undefined' && Canvas.endEraseSession) {

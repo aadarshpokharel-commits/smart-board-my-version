@@ -838,6 +838,10 @@ const UI = (() => {
             <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="11" stroke="#0284c7" stroke-width="1.8" stroke-dasharray="3,2" fill="#0284c7" fill-opacity=".08"/><line x1="16" y1="16" x2="27" y2="16" stroke="#eab308" stroke-width="1.5"/><circle cx="16" cy="16" r="2.2" fill="#ef4444"/><circle cx="27" cy="16" r="2" fill="#38bdf8"/><text x="21" y="13" font-size="6.5" font-weight="bold" fill="#eab308">r</text></svg>
             <span class="qlabel">Compass</span>
           </button>
+          <button class="fsc-quick-tool-btn is-sim-btn" onclick="AreaSolver.findArea(); UI.closeShapesFlyout();" title="📐 Arbitrary Shape Area Solver — Calculate enclosed area of drawn shapes">
+            <svg viewBox="0 0 32 32" fill="none"><polygon points="6,24 10,8 24,6 27,20 18,26" stroke="#38bdf8" stroke-width="2" fill="rgba(56,189,248,0.18)"/><circle cx="6" cy="24" r="2" fill="#facc15"/><circle cx="10" cy="8" r="2" fill="#facc15"/><circle cx="24" cy="6" r="2" fill="#facc15"/><circle cx="27" cy="20" r="2" fill="#facc15"/><circle cx="18" cy="26" r="2" fill="#facc15"/><text x="17" y="18" font-size="6.5" font-weight="bold" fill="#38bdf8" text-anchor="middle">Area</text></svg>
+            <span class="qlabel">Find Area</span>
+          </button>
           <button class="fsc-quick-tool-btn is-sim-btn" onclick="MathVisualizer.show('unitcircle'); UI.closeShapesFlyout();" title="⭕ Unit Circle &amp; Sine Wave Visualizer">
             <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="10" stroke="#0284c7" stroke-width="2" fill="none"/><line x1="16" y1="16" x2="23" y2="9" stroke="#eab308" stroke-width="2"/><circle cx="23" cy="9" r="2.5" fill="#ef4444"/><line x1="23" y1="9" x2="23" y2="16" stroke="#4ade80" stroke-width="1.5"/><line x1="16" y1="16" x2="23" y2="16" stroke="#38bdf8" stroke-width="1.8"/></svg>
             <span class="qlabel">Unit Circle</span>

@@ -337,6 +337,17 @@
           <path d="M12 5v14M5 12h14"/>
         </svg>
       </button>
+
+      <!-- 7. Arbitrary Shape Area Solver -->
+      <button class="tool-btn" id="btn-fp-area-solver" onclick="if(typeof AreaSolver!=='undefined')AreaSolver.activate()" title="Find Area of Drawn Shape (Alt+A)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 21L7 7l5 3 4-6 5 8"/>
+          <path d="M3 21h18" stroke-width="1.5"/>
+          <path d="M9 21V14" stroke-width="1.5" stroke-dasharray="2,2"/>
+          <circle cx="17" cy="9" r="3" stroke-width="1.8"/>
+          <text x="15.6" y="10" font-size="3.5" fill="currentColor" stroke="none" font-weight="bold">A</text>
+        </svg>
+      </button>
     </div>
 
     <!-- 3. Bottom Undo / Redo White Capsule -->
@@ -934,6 +945,7 @@
 <script src="tools/ppt-presenter.js"></script>
 <script src="tools/physics-lab.js"></script>
 <script src="tools/math-visualizer.js"></script>
+<script src="tools/area-solver.js"></script>
 <script>
 'use strict';
 
