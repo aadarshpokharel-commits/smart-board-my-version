@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-board-theme="white">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -21,50 +21,6 @@
       <span class="brand-name">PiyushDhara</span>
       <span class="brand-sub">EduVerse &middot; Board</span>
     </div>
-  </div>
-
-  <div class="tb-div"></div>
-
-  <!-- SUBJECT & CHAPTER DROPDOWNS -->
-  <div class="subject-dropdowns-group">
-    <!-- Math Subject & Chapters Dropdown -->
-    <div class="tb-dropdown subj-dd-wrap" id="dd-subj-math">
-      <button id="subj-math" class="tb-dropdown-btn subj-pill-btn active" onclick="UI.toggleSubjectDropdown('mathematics', 'dd-subj-math')" title="Mathematics — Click to view & switch chapters">
-        <span class="subj-icon">📐</span>
-        <span class="subj-name">Math</span>
-        <span class="dd-arrow">▼</span>
-      </button>
-      <div class="tb-dropdown-menu chapter-dropdown-menu" id="math-chapters-menu">
-        <!-- Injected dynamically by UI.renderTopChapters() -->
-      </div>
-    </div>
-
-    <!-- Science Subject & Chapters Dropdown -->
-    <div class="tb-dropdown subj-dd-wrap" id="dd-subj-sci">
-      <button id="subj-sci" class="tb-dropdown-btn subj-pill-btn" onclick="UI.toggleSubjectDropdown('science', 'dd-subj-sci')" title="Science & Technology — Click to view & switch chapters">
-        <span class="subj-icon">🔬</span>
-        <span class="subj-name">Science</span>
-        <span class="dd-arrow">▼</span>
-      </button>
-      <div class="tb-dropdown-menu chapter-dropdown-menu" id="sci-chapters-menu">
-        <!-- Injected dynamically by UI.renderTopChapters() -->
-      </div>
-    </div>
-  </div>
-
-  <div class="tb-div"></div>
-
-  <!-- Active Chapter Stepper Control -->
-  <div class="top-chapter-stepper-control">
-    <button class="top-ch-nav-btn" onclick="UI.prevChapter()" title="Previous Chapter (◀)">◀</button>
-    <div class="top-ch-pill" onclick="UI.toggleChapterPanel()" title="Active Chapter — Click to open Formulas & Interactive Tools">
-      <div class="top-ch-pill-inner">
-        <span class="top-ch-tag" id="top-ch-tag">Unit 1 / 14</span>
-        <span class="top-ch-name" id="active-ch-label">Ch 1 — Sets</span>
-      </div>
-      <span class="top-ch-tools-badge">⚡ Tools</span>
-    </div>
-    <button class="top-ch-nav-btn" onclick="UI.nextChapter()" title="Next Chapter (▶)">▶</button>
   </div>
 
   <div class="tb-div"></div>
@@ -97,6 +53,37 @@
     <button class="tb-btn rec" id="btn-rec" onclick="App.toggleRecord()" title="Screen Recording">
       <span class="rec-dot"></span> <span>Record</span>
     </button>
+
+    <!-- WORKSPACE PARTITION / SCREEN SPLIT CONTROL -->
+    <div class="tb-dropdown" id="dd-split">
+      <button class="tb-btn split-btn" id="btn-workspace-split" onclick="UI.toggleDropdown('dd-split')" title="Workspace Partition / Screen Split">
+        <svg viewBox="0 0 20 20" fill="none" style="width:15px;height:15px;"><rect x="2.5" y="3.5" width="15" height="13" rx="2" stroke="currentColor" stroke-width="1.6"/><line x1="10" y1="3.5" x2="10" y2="16.5" stroke="currentColor" stroke-width="1.4" stroke-dasharray="2 1.5"/></svg>
+        <span id="top-split-label">Workspace</span> <span class="dd-arrow">▼</span>
+      </button>
+      <div class="tb-dropdown-menu split-dd-menu">
+        <button class="dd-item active" id="split-menu-normal" onclick="WorkspaceSplit.setMode('normal'); UI.closeAllDropdowns()">
+          <div class="dd-item-left">
+            <svg viewBox="0 0 20 20" fill="none"><rect x="3" y="3" width="14" height="14" rx="2" stroke="currentColor" stroke-width="1.6"/></svg>
+            Normal Workspace
+          </div>
+          <span class="dd-shortcut">Single</span>
+        </button>
+        <button class="dd-item" id="split-menu-2" onclick="WorkspaceSplit.setMode('split-2'); UI.closeAllDropdowns()">
+          <div class="dd-item-left">
+            <svg viewBox="0 0 20 20" fill="none"><rect x="2.5" y="3" width="15" height="14" rx="2" stroke="currentColor" stroke-width="1.5"/><line x1="10" y1="3" x2="10" y2="17" stroke="currentColor" stroke-width="1.5"/></svg>
+            2 Partition
+          </div>
+          <span class="dd-shortcut">Side-by-Side</span>
+        </button>
+        <button class="dd-item" id="split-menu-4" onclick="WorkspaceSplit.setMode('split-4'); UI.closeAllDropdowns()">
+          <div class="dd-item-left">
+            <svg viewBox="0 0 20 20" fill="none"><rect x="2.5" y="3" width="15" height="14" rx="2" stroke="currentColor" stroke-width="1.5"/><line x1="10" y1="3" x2="10" y2="17" stroke="currentColor" stroke-width="1.5"/><line x1="2.5" y1="10" x2="17.5" y2="10" stroke="currentColor" stroke-width="1.5"/></svg>
+            4 Partition
+          </div>
+          <span class="dd-shortcut">2×2 Grid</span>
+        </button>
+      </div>
+    </div>
   </div>
 
   <div class="tb-div"></div>
@@ -133,6 +120,12 @@
         <div class="dd-item-left">
           <svg viewBox="0 0 20 20" fill="none"><polyline points="2,15 6,9 10,12 14,5 18,8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6" cy="9" r="1.5" fill="currentColor"/><circle cx="10" cy="12" r="1.5" fill="currentColor"/><circle cx="14" cy="5" r="1.5" fill="currentColor"/></svg>
           Live Graphs &amp; Stats
+        </div>
+      </button>
+      <button class="dd-item" onclick="if(typeof GraphObject!=='undefined'){GraphObject.insertGraphOnBoard();} UI.closeAllDropdowns()">
+        <div class="dd-item-left">
+          <svg viewBox="0 0 20 20" fill="none"><path d="M3 17h14M3 3v14M5 13c3-8 6-8 9-2s4-8 4-8" stroke="#38bdf8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="8" cy="9" r="1.5" fill="#38bdf8"/><circle cx="14" cy="11" r="1.5" fill="#facc15"/></svg>
+          2D Graphable Workspace
         </div>
       </button>
       <div class="dd-sep"></div>
@@ -288,8 +281,9 @@
       <!-- 3. Eraser -->
       <button class="tool-btn" id="btn-fp-eraser" data-tool="eraser" onclick="UI.toggleEraserFlyout()" title="Eraser (E)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M4 4h16v10l-6 6H4a2 2 0 01-2-2V6a2 2 0 012-2z"/>
-          <path d="M14 14h6l-6 6v-6z"/>
+          <path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/>
+          <path d="M22 21H7"/>
+          <path d="m5 11 9 9"/>
         </svg>
       </button>
 
@@ -424,14 +418,15 @@
 
       <!-- Colors Grid (2 columns) -->
       <div class="fp-colors-grid">
-        <button class="fp-color-dot white-dot active" data-hex="#ffffff" style="background:#ffffff;" onclick="UI.selectFlyoutColor('#ffffff')" title="White"></button>
+        <button class="fp-color-dot dark-dot active" data-hex="#0f172a" style="background:#0f172a;" onclick="UI.selectFlyoutColor('#0f172a')" title="Black / Slate"></button>
+        <button class="fp-color-dot white-dot" data-hex="#ffffff" style="background:#ffffff;" onclick="UI.selectFlyoutColor('#ffffff')" title="White"></button>
         <button class="fp-color-dot" data-hex="#ef4444" style="background:#ef4444;" onclick="UI.selectFlyoutColor('#ef4444')" title="Red"></button>
         <button class="fp-color-dot" data-hex="#22c55e" style="background:#22c55e;" onclick="UI.selectFlyoutColor('#22c55e')" title="Green"></button>
         <button class="fp-color-dot" data-hex="#eab308" style="background:#eab308;" onclick="UI.selectFlyoutColor('#eab308')" title="Yellow"></button>
         <button class="fp-color-dot" data-hex="#3b82f6" style="background:#3b82f6;" onclick="UI.selectFlyoutColor('#3b82f6')" title="Blue"></button>
         <button class="fp-color-dot" data-hex="#a855f7" style="background:#a855f7;" onclick="UI.selectFlyoutColor('#a855f7')" title="Purple"></button>
         <label class="fp-color-dot fp-custom-dot" title="Custom Color Picker">
-          <input type="color" id="fp-custom-picker" onchange="UI.selectFlyoutColor(this.value)" value="#ffffff" style="opacity:0;position:absolute;width:1px;height:1px;">
+          <input type="color" id="fp-custom-picker" onchange="UI.selectFlyoutColor(this.value)" value="#0f172a" style="opacity:0;position:absolute;width:1px;height:1px;">
           <span>＋</span>
         </label>
       </div>
@@ -946,6 +941,7 @@
 <script src="tools/physics-lab.js"></script>
 <script src="tools/math-visualizer.js"></script>
 <script src="tools/area-solver.js"></script>
+<script src="tools/workspace-split.js"></script>
 <script>
 'use strict';
 

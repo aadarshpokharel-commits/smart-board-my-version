@@ -7,10 +7,10 @@ const UI = (() => {
   let panelOpen = false;
 
   const BOARD_COLORS = [
-    { id:'green', bg:'#0e2419', line:'rgba(255,255,255,0.075)', major:'rgba(255,255,255,0.15)', label:'Chalkboard Green' },
+    { id:'white', bg:'#f4f6f8', line:'rgba(15,23,42,0.055)', major:'rgba(15,23,42,0.12)', label:'Soft Whiteboard' },
     { id:'black', bg:'#0b0d13', line:'rgba(255,255,255,0.07)',  major:'rgba(255,255,255,0.14)', label:'Blackboard' },
     { id:'navy',  bg:'#0a1224', line:'rgba(148,163,184,0.08)', major:'rgba(148,163,184,0.16)', label:'Cosmic Navy' },
-    { id:'white', bg:'#ffffff', line:'rgba(15,23,42,0.07)',    major:'rgba(15,23,42,0.13)',    label:'Whiteboard' },
+    { id:'green', bg:'#0e2419', line:'rgba(255,255,255,0.075)', major:'rgba(255,255,255,0.15)', label:'Chalkboard Green' },
   ];
 
   // ─────────────────────────────────────────────
@@ -171,7 +171,7 @@ const UI = (() => {
     if (!wrap) return;
     wrap.innerHTML = '';
 
-    const curBoardId = (typeof Canvas !== 'undefined' && Canvas.getBoardColorId) ? Canvas.getBoardColorId() : 'green';
+    const curBoardId = (typeof Canvas !== 'undefined' && Canvas.getBoardColorId) ? Canvas.getBoardColorId() : 'white';
 
     BOARD_COLORS.forEach(bc => {
       const s = document.createElement('div');
@@ -179,7 +179,7 @@ const UI = (() => {
       s.dataset.id = bc.id;
       s.style.background = bc.bg;
       s.title = `${bc.label} (${bc.bg})`;
-      if (bc.bg === '#ffffff' || bc.bg === '#fdf6e3' || bc.bg === '#f1f5f9') {
+      if (bc.id === 'white' || bc.bg === '#ffffff' || bc.bg === '#fdf6e3' || bc.bg === '#f1f5f9' || bc.bg === '#f4f6f8') {
         s.style.boxShadow = 'inset 0 0 0 1px rgba(0,0,0,0.18)';
       }
       s.addEventListener('click', () => {
@@ -410,7 +410,7 @@ const UI = (() => {
     grid.innerHTML = '';
 
     const list = (typeof Canvas !== 'undefined' && Canvas.getBoardBackgrounds) ? Canvas.getBoardBackgrounds() : [];
-    const curId = (typeof Canvas !== 'undefined' && Canvas.getBoardColorId) ? Canvas.getBoardColorId() : 'green';
+    const curId = (typeof Canvas !== 'undefined' && Canvas.getBoardColorId) ? Canvas.getBoardColorId() : 'white';
 
     const filtered = filterCat === 'all' ? list : list.filter(b => b.category === filterCat);
 
@@ -486,6 +486,7 @@ const UI = (() => {
       App.penSize = sz;
     }
     syncPenPanel();
+    closePenFlyout();
   }
 
   function selectEraserSize(sz) {
@@ -493,6 +494,7 @@ const UI = (() => {
       App.eraserSize = sz;
     }
     syncPenPanel();
+    closeEraserFlyout();
   }
 
   let shapesSectionHidden = false;
@@ -748,6 +750,7 @@ const UI = (() => {
                       (d.style.background && rgbToHex(d.style.background) === hex.toLowerCase());
       d.classList.toggle('active', isMatch);
     });
+    closePenFlyout();
   }
 
   function clearDrawingStrokes() {
@@ -985,6 +988,7 @@ const UI = (() => {
         label: '⭐ Interactive Visual Math Labs',
         cat: 'labs',
         shapes: [
+          { is2DGraphable: true, t:'tool-2d-graphable', l:'2D Graphable', desc:'35 Function Families, Transformations & Properties', svg:'<path d="M4,26 L28,26 M6,28 L6,4" stroke="currentColor" stroke-width="1.8"/><path d="M6,22 Q14,24 16,14 T26,6" stroke="#38bdf8" stroke-width="2.2" fill="none"/><circle cx="16" cy="14" r="2.2" fill="#facc15"/><line x1="6" y1="14" x2="26" y2="14" stroke="#f43f5e" stroke-width="1.2" stroke-dasharray="2,2"/>' },
           { isGraphTool: true, t:'tool-graphs', l:'Live Graphs', desc:'Line, Bar, Pie, Scatter & Statistics', svg:'<polyline points="3,25 9,15 15,19 21,9 29,13" stroke="#10b981" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="15" r="2.2" fill="#10b981"/><circle cx="15" cy="19" r="2.2" fill="#10b981"/><circle cx="21" cy="9" r="2.2" fill="#10b981"/><line x1="2" y1="28" x2="30" y2="28" stroke="currentColor" stroke-width="1.5"/>' },
           { isMathLab: true, modId: 'unitcircle', t:'lab-unitcircle', l:'Unit Circle', desc:'Trig Coordinates & Live Sine Wave', svg:'<circle cx="16" cy="16" r="11" stroke="#0284c7" stroke-width="2" fill="none"/><line x1="16" y1="16" x2="24" y2="9" stroke="#eab308" stroke-width="2"/><circle cx="24" cy="9" r="2.5" fill="#ef4444"/><line x1="24" y1="9" x2="24" y2="16" stroke="#4ade80" stroke-width="1.5" stroke-dasharray="2,1"/><line x1="16" y1="16" x2="24" y2="16" stroke="#38bdf8" stroke-width="1.8"/>' },
           { isMathLab: true, modId: 'calculus',   t:'lab-calculus',   l:'Calculus Lab', desc:'Tangents, Derivatives & Integrals', svg:'<path d="M4,24 Q14,24 16,14 T28,4" stroke="#e8c96b" stroke-width="2" fill="none"/><line x1="8" y1="22" x2="24" y2="6" stroke="#f43f5e" stroke-width="1.8"/><rect x="11" y="15" width="4" height="9" fill="#38bdf8" fill-opacity=".3"/><rect x="15" y="11" width="4" height="13" fill="#38bdf8" fill-opacity=".3"/>' },
@@ -1202,7 +1206,15 @@ const UI = (() => {
         btn.title = s.l + (s.desc ? ` - ${s.desc}` : '');
         btn.innerHTML = `<svg viewBox="0 0 32 32" fill="none" style="color:currentColor">${s.svg}</svg><span class="sl">${s.l}</span>`;
         btn.addEventListener('click', () => {
-          if (s.isGraphTool) {
+          if (s.is2DGraphable) {
+            if (typeof GraphObject !== 'undefined' && GraphObject.insertGraphOnBoard) {
+              GraphObject.insertGraphOnBoard();
+              UI.closeShapesFlyout();
+              if (typeof App !== 'undefined' && App.showToast) {
+                App.showToast('📈 Opened 2D Graphable Workspace!');
+              }
+            }
+          } else if (s.isGraphTool) {
             if (typeof GraphEngine !== 'undefined' && GraphEngine.show) {
               GraphEngine.show();
               UI.closeShapesFlyout();
@@ -1247,8 +1259,8 @@ const UI = (() => {
   function buildColorPalette() {
     const pal = document.getElementById('color-palette');
     const COLORS = [
-      '#ffffff','#ef4444','#22c55e','#c9a84c','#a855f7',
-      '#f97316','#06b6d4','#ec4899','#6b7280','#1d4ed8'
+      '#0f172a','#ffffff','#ef4444','#22c55e','#c9a84c','#a855f7',
+      '#f97316','#06b6d4','#ec4899','#6b7280'
     ];
     if (pal) {
       pal.innerHTML = '';
@@ -1277,6 +1289,9 @@ const UI = (() => {
         btn.innerHTML = `<div style="width:${p.dot}px;height:${p.dot}px;border-radius:50%;background:var(--gold)"></div>`;
         btn.addEventListener('click', () => {
           App.penSize = p.sz;
+          if (typeof WorkspaceSplit !== 'undefined' && WorkspaceSplit.getMode() !== 'normal') {
+            WorkspaceSplit.setActivePartitionSize(p.sz);
+          }
           document.querySelectorAll('.pen-sz').forEach(b => b.classList.remove('active'));
           btn.classList.add('active');
         });
@@ -1943,6 +1958,24 @@ const UI = (() => {
   window.addEventListener('click', (e) => {
     if (!e.target.closest('.tb-dropdown')) {
       closeAllDropdowns();
+    }
+    if (!e.target.closest('#flyout-pen') && !e.target.closest('#btn-fp-pen') && !e.target.closest('#fp-custom-picker')) {
+      closePenFlyout();
+    }
+    if (!e.target.closest('#flyout-shapes') && !e.target.closest('#btn-fp-shapes') && !e.target.closest('#subtool-smart-shape')) {
+      closeShapesFlyout();
+    }
+    if (!e.target.closest('#flyout-insert') && !e.target.closest('#btn-fp-insert')) {
+      closeInsertFlyout();
+    }
+    if (!e.target.closest('#flyout-eraser') && !e.target.closest('#btn-fp-eraser')) {
+      closeEraserFlyout();
+    }
+  });
+
+  window.addEventListener('pointerdown', (e) => {
+    if (!e.target.closest('#flyout-pen') && !e.target.closest('#btn-fp-pen') && !e.target.closest('#fp-custom-picker')) {
+      closePenFlyout();
     }
     if (!e.target.closest('#flyout-shapes') && !e.target.closest('#btn-fp-shapes') && !e.target.closest('#subtool-smart-shape')) {
       closeShapesFlyout();

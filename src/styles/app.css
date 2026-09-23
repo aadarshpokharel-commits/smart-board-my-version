@@ -21,7 +21,7 @@
   --brand:      'Plus Jakarta Sans', sans-serif;
   --topbar:     clamp(46px, 5vh, 60px);
   --status:     clamp(26px, 3vh, 32px);
-  --board-bg:   #0e2419;
+  --board-bg:   #f4f6f8;
   --sb-w:       0px;    /* sidebar removed for full-width board */
   --tb-w:       clamp(52px, 4.2vw, 68px);   /* toolbar — 65" SmartBoard */
   --rp-w:       0px;    /* right panel removed — everything on left side */
@@ -379,7 +379,7 @@ body{display:flex;flex-direction:column;height:100vh;overflow:hidden;}
 }
 .bswatch.active {
   border-color: #ffffff;
-  box-shadow: 0 0 0 2px var(--gold), 0 0 10px rgba(234, 179, 8, 0.55);
+  box-shadow: 0 0 0 2px var(--gold), 0 0 10px rgba(234, 179, 8, 0.55) !important;
   transform: scale(1.15);
   z-index: 3;
 }
@@ -1304,7 +1304,7 @@ body{display:flex;flex-direction:column;height:100vh;overflow:hidden;}
   display: flex;
   align-items: center;
   gap: 6px;
-  background: var(--board-bg, #0e2419);
+  background: var(--board-bg, #f4f6f8);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   padding: 0 12px;
   height: 38px;
@@ -1391,7 +1391,7 @@ body{display:flex;flex-direction:column;height:100vh;overflow:hidden;}
 #statusbar {
   height: var(--status);
   min-height: var(--status);
-  background: var(--board-bg, #0e2419);
+  background: var(--board-bg, #f4f6f8);
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   align-items: center;
@@ -2701,6 +2701,12 @@ body.board-fullscreen #fs-page-control {
 }
 .fp-color-dot.white-dot.active {
   box-shadow: 0 0 0 2.5px #2563eb;
+}
+.fp-color-dot.dark-dot {
+  border: 1.5px solid rgba(255, 255, 255, 0.25);
+}
+.fp-color-dot.dark-dot.active {
+  box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #2563eb;
 }
 
 .fp-custom-dot {
@@ -5679,30 +5685,40 @@ input[type="range"].smart-slider::-webkit-slider-thumb:active {
 
 .tmc-interactive-grid {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(6, 36px);
+  grid-template-rows: repeat(6, 36px);
   gap: 6px;
-  background: rgba(15, 23, 42, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 14px;
-  padding: 12px;
-  max-width: 320px;
-  margin: 0 auto;
+  width: fit-content;
+  background: rgba(11, 19, 38, 0.9);
+  border: 1.5px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 14px;
+  margin: 4px auto 0;
+  box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.45);
 }
 
 .tmc-grid-cell {
-  height: 34px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 6px;
+  width: 36px;
+  height: 36px;
+  aspect-ratio: 1 / 1;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  border-radius: 7px;
   cursor: pointer;
-  transition: all 0.12s ease;
+  transition: background 0.14s ease, border-color 0.14s ease, transform 0.1s ease, box-shadow 0.14s ease;
+}
+.tmc-grid-cell:hover {
+  border-color: rgba(234, 179, 8, 0.5);
+  background: rgba(234, 179, 8, 0.15);
+  transform: scale(1.06);
 }
 .tmc-grid-cell.highlighted,
 .tmc-grid-cell.active,
 .tmc-cell.active {
-  background: linear-gradient(135deg, rgba(234, 179, 8, 0.45), rgba(202, 138, 4, 0.35));
-  border-color: #eab308;
-  box-shadow: 0 0 10px rgba(234, 179, 8, 0.35);
+  background: linear-gradient(135deg, rgba(234, 179, 8, 0.55), rgba(202, 138, 4, 0.42));
+  border-color: #facc15;
+  box-shadow: 0 0 10px rgba(234, 179, 8, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.2);
 }
 
 .tmc-grid-info, .tmc-grid-sec {
@@ -6272,26 +6288,47 @@ input[type="range"].smart-slider::-webkit-slider-thumb:active {
 /* GRAPH STUDIO & TEACHING LAB STYLES                          */
 /* ═══════════════════════════════════════════════════════════ */
 
+/* ═══════════════════════════════════════════════════════════ */
+/* 2D GRAPHABLE STUDIO & TEACHING LAB STYLES                   */
+/* ═══════════════════════════════════════════════════════════ */
+
+.gos-tab-strip {
+  display: flex;
+  background: rgba(8, 15, 31, 0.95);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 6px 14px;
+  overflow-x: auto;
+  gap: 4px;
+}
+
 .gos-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   background: transparent;
-  border: none;
+  border: 1px solid transparent;
   color: #94a3b8;
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 600;
-  padding: 11px 16px;
-  border-bottom: 2px solid transparent;
+  padding: 8px 14px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.18s ease;
   white-space: nowrap;
+  user-select: none;
 }
 
 .gos-tab:hover {
   color: #f1f5f9;
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
 }
 
 .gos-tab.active {
   color: #38bdf8;
-  border-bottom-color: #38bdf8;
+  background: rgba(56, 189, 248, 0.15);
+  border-color: rgba(56, 189, 248, 0.35);
+  box-shadow: 0 2px 12px rgba(56, 189, 248, 0.2);
   font-weight: 700;
 }
 
@@ -6315,39 +6352,155 @@ input[type="range"].smart-slider::-webkit-slider-thumb:active {
 }
 
 /* ───────────────────────────────────────────────────────────── */
-/* MANUAL COEFFICIENT CONTROLS (NO RANGE SLIDER LINES)           */
+/* FORMULA HERO BANNER                                           */
+/* ───────────────────────────────────────────────────────────── */
+
+.gos-formula-hero {
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.12), rgba(15, 23, 42, 0.85));
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  border-radius: 12px;
+  padding: 16px 20px;
+  text-align: center;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.gos-formula-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.gos-formula-badge {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.gos-formula-badge strong {
+  color: #38bdf8;
+}
+
+.gos-standard-tag {
+  font-size: 11px;
+  font-weight: 700;
+  color: #facc15;
+  background: rgba(250, 204, 21, 0.12);
+  padding: 3px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(250, 204, 21, 0.3);
+  font-family: ui-monospace, monospace;
+}
+
+.gos-formula-text {
+  font-size: 26px;
+  font-weight: 800;
+  color: #38bdf8;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  letter-spacing: 0.02em;
+  margin: 6px 0;
+  text-shadow: 0 0 16px rgba(56, 189, 248, 0.35);
+}
+
+.gos-ghost-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.gos-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.gos-checkbox-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #38bdf8;
+  cursor: pointer;
+}
+
+/* ───────────────────────────────────────────────────────────── */
+/* PARAMETER CARDS WITH SLIDERS & CLEAN BADGES                   */
 /* ───────────────────────────────────────────────────────────── */
 
 .gos-param-card {
-  background: rgba(15, 23, 42, 0.65);
+  background: rgba(15, 23, 42, 0.7);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
-  padding: 13px 16px;
+  padding: 14px 18px;
   transition: all 0.2s ease;
   position: relative;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .gos-param-card:hover {
   border-color: rgba(56, 189, 248, 0.35);
   background: rgba(15, 23, 42, 0.85);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.35);
+}
+
+.gos-param-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.gos-param-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
 }
 
 .gos-param-badge {
-  width: 38px;
-  height: 38px;
+  width: 36px;
+  height: 36px;
   border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 17px;
+  font-size: 19px;
   font-weight: 800;
   font-family: 'Times New Roman', Cambria, Georgia, serif;
   font-style: italic;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
   flex-shrink: 0;
   user-select: none;
+}
+
+.gos-param-labels {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.gos-param-name {
+  color: #f8fafc;
+  font-size: 13.5px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.gos-param-desc {
+  font-size: 11.5px;
+  color: #94a3b8;
+  line-height: 1.35;
 }
 
 .gos-input-cluster {
@@ -6362,13 +6515,13 @@ input[type="range"].smart-slider::-webkit-slider-thumb:active {
 }
 
 .gos-stepper-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(255, 255, 255, 0.06);
   color: #e2e8f0;
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -6392,14 +6545,14 @@ input[type="range"].smart-slider::-webkit-slider-thumb:active {
 }
 
 .gos-manual-input {
-  width: 78px;
-  height: 32px;
+  width: 68px;
+  height: 30px;
   border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 7px;
+  border-radius: 6px;
   background: rgba(15, 23, 42, 0.95);
   color: #ffffff;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 15px;
+  font-family: ui-monospace, monospace;
+  font-size: 14.5px;
   font-weight: 700;
   text-align: center;
   outline: none;
@@ -6413,7 +6566,6 @@ input[type="range"].smart-slider::-webkit-slider-thumb:active {
   background: rgba(15, 23, 42, 1);
 }
 
-/* Hide HTML5 default spinners for sleek appearance */
 .gos-manual-input::-webkit-inner-spin-button,
 .gos-manual-input::-webkit-outer-spin-button {
   -webkit-appearance: none;
@@ -6424,9 +6576,9 @@ input[type="range"].smart-slider::-webkit-slider-thumb:active {
 }
 
 .gos-reset-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: transparent;
   color: #94a3b8;
@@ -6444,6 +6596,81 @@ input[type="range"].smart-slider::-webkit-slider-thumb:active {
   color: #f87171;
   border-color: rgba(239, 68, 68, 0.35);
   transform: rotate(-45deg);
+}
+
+/* Range Slider Bar Row */
+.gos-slider-bar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 2px 2px;
+}
+
+.gos-slider-bound {
+  font-size: 11px;
+  font-family: ui-monospace, monospace;
+  color: #64748b;
+  font-weight: 600;
+  min-width: 18px;
+  text-align: center;
+}
+
+.gos-range-slider {
+  flex: 1;
+  height: 6px;
+  -webkit-appearance: none;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  outline: none;
+  transition: all 0.15s ease;
+  cursor: pointer;
+}
+
+.gos-range-slider:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.gos-range-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #38bdf8;
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.6);
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.gos-range-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.18);
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.9);
+}
+
+.gos-range-slider::-webkit-slider-thumb:active {
+  transform: scale(0.95);
+  background: #0284c7;
+}
+
+/* Presets */
+.gos-presets-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.gos-presets-label {
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.gos-chips-group {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
 }
 
 .gos-preset-chip {
@@ -6473,6 +6700,53 @@ input[type="range"].smart-slider::-webkit-slider-thumb:active {
   border-color: rgba(56, 189, 248, 0.6) !important;
   font-weight: 700;
   box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+}
+
+/* Color Picker Row in Studio Modal */
+.gos-color-picker-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 8px 16px;
+  margin-top: 2px;
+}
+
+.gos-color-picker-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gos-color-swatches {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gos-color-swatch {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.gos-color-swatch:hover {
+  transform: scale(1.18);
+}
+
+.gos-color-swatch.active {
+  border-color: #ffffff !important;
+  transform: scale(1.12);
+  box-shadow: 0 0 12px currentColor;
 }
 
 .gos-insight-badge {
@@ -6994,21 +7268,207 @@ input[type="range"].smart-slider::-webkit-slider-thumb:active {
   color: #93c5fd;
 }
 
-/* Formula Box */
-.as-formula-box {
-  background: rgba(2, 6, 23, 0.8);
-  border: 1px solid rgba(56, 189, 248, 0.2);
+/* Student Math Card & Visual Math Typography (No Code Fonts) */
+.as-math-card {
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.9));
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin: 6px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.as-math-badge-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.as-math-type-pill {
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+}
+.as-math-type-pill.green {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.3);
+}
+.as-math-type-pill.cyan {
+  background: rgba(6, 182, 212, 0.15);
+  color: #22d3ee;
+  border-color: rgba(6, 182, 212, 0.3);
+}
+.as-math-type-sub {
+  font-size: 11px;
+  color: #94a3b8;
+  font-weight: 600;
+}
+.as-math-render {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  font-family: 'Cambria Math', 'KaTeX_Main', 'Times New Roman', serif;
+  font-size: 19px;
+  color: #f8fafc;
+  padding: 6px 0;
+  user-select: text;
+}
+.as-math-render.small {
+  font-size: 15px;
+  gap: 4px;
+}
+.m-sym {
+  font-style: italic;
+  font-weight: 700;
+  color: #38bdf8;
+}
+.m-op {
+  font-family: sans-serif;
+  color: #94a3b8;
+  margin: 0 2px;
+}
+.m-frac {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  vertical-align: middle;
+  font-size: 14px;
+  line-height: 1.05;
+  margin: 0 4px;
+}
+.m-num {
+  border-bottom: 1.5px solid #38bdf8;
+  padding: 0 4px 1px 4px;
+  color: #f8fafc;
+}
+.m-den {
+  padding: 1px 4px 0 4px;
+  color: #f8fafc;
+}
+.m-bracket {
+  font-size: 26px;
+  font-weight: 300;
+  color: #38bdf8;
+  line-height: 1;
+}
+.m-sigma-block {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
+  margin: 0 3px;
+}
+.m-sigma {
+  font-size: 24px;
+  color: #fde047;
+}
+.m-sigma-sup, .m-sigma-sub {
+  font-size: 9.5px;
+  color: #94a3b8;
+  font-family: 'Inter', sans-serif;
+}
+.m-term {
+  font-size: 16.5px;
+  color: #f1f5f9;
+}
+.m-term sub {
+  font-size: 10.5px;
+  color: #7dd3fc;
+}
+.as-math-expanded {
+  font-family: 'Cambria Math', 'Times New Roman', serif;
+  font-size: 13px;
+  color: #93c5fd;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.25);
+  padding: 6px 8px;
+  border-radius: 6px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+.as-math-explain {
+  font-size: 11.5px;
+  color: #cbd5e1;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 6px;
+  padding: 6px 10px;
+  line-height: 1.45;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.as-note-tag {
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.15);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  padding: 1px 5px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.as-grid-formula-card {
+  background: linear-gradient(135deg, rgba(6, 78, 59, 0.35), rgba(15, 23, 42, 0.7));
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 9px;
+  padding: 10px 12px;
+  margin: 6px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.as-calc-card {
+  background: rgba(2, 6, 23, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
   padding: 8px 12px;
   margin: 6px 0;
-  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
-.as-math-big {
-  font-family: 'JetBrains Mono', 'Cascadia Code', monospace;
-  font-size: 13.5px;
+.as-calc-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #cbd5e1;
+  padding: 2px 0;
+}
+.as-calc-row.total {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 6px;
+  margin-top: 2px;
+}
+.as-calc-value.cyan {
   color: #38bdf8;
+  font-family: var(--mono);
+  font-weight: 700;
+}
+.as-calc-value.yellow {
+  color: #fde047;
+  font-size: 13px;
+  font-weight: 700;
+}
+.as-pill-val {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-family: var(--mono);
   font-weight: 600;
-  letter-spacing: 0.02em;
+  font-size: 11.5px;
 }
 
 /* Sub-table */
@@ -7191,6 +7651,677 @@ input[type="range"].smart-slider::-webkit-slider-thumb:active {
   color: #38bdf8;
   border-color: #38bdf8;
 }
+
+/* ═══════════════════════════════════════════════════════════ */
+/* 2D GRAPHABLE WORKSPACE & FUNCTION LIBRARY STYLES           */
+/* ═══════════════════════════════════════════════════════════ */
+.gos-template-card.active-family {
+  border-color: #38bdf8 !important;
+  background: rgba(56, 189, 248, 0.12) !important;
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.25);
+}
+
+#gos-lib-search:focus {
+  border-color: #38bdf8 !important;
+  background: rgba(255, 255, 255, 0.09) !important;
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.2);
+}
+
+/* ═══════════════════════════════════════════════════════════ */
+/* NATIVE WORKSPACE PARTITIONING & SCREEN SPLIT STYLES        */
+/* ═══════════════════════════════════════════════════════════ */
+
+/* Split Button in Topbar */
+.split-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #f1f5f9;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  height: 28px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.15s ease;
+}
+.split-btn:hover, .tb-dropdown.open .split-btn {
+  background: rgba(234, 179, 8, 0.18);
+  border-color: rgba(234, 179, 8, 0.5);
+  color: #fef08a;
+}
+.split-dd-menu {
+  min-width: 190px;
+}
+
+/* Main Split Container */
+#workspace-split-container {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  background: #060a13;
+  z-index: 10;
+  overflow: hidden;
+  user-select: none;
+}
+#workspace-split-container.hidden {
+  display: none !important;
+}
+
+/* 2-Partition Layout */
+#workspace-split-container.split-2 {
+  flex-direction: row;
+  align-items: stretch;
+}
+
+/* 4-Partition Layout (2×2 Grid) */
+#workspace-split-container.split-4 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 6px;
+  padding: 6px;
+}
+
+/* Individual Partition */
+.workspace-partition {
+  display: flex;
+  flex-direction: column;
+  background: #0b1329;
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  overflow: hidden;
+  position: relative;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
+  min-width: 0;
+  min-height: 0;
+}
+.workspace-partition.active {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 1.5px #38bdf8, 0 8px 30px rgba(56, 189, 248, 0.25);
+}
+.workspace-partition.maximized {
+  position: absolute !important;
+  inset: 6px !important;
+  z-index: 100 !important;
+  width: auto !important;
+  height: auto !important;
+  flex: none !important;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.75);
+}
+
+/* Draggable Divider in 2-Partition Mode */
+.wp-split-divider {
+  width: 8px;
+  cursor: col-resize;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 20;
+  touch-action: none;
+  transition: background 0.15s ease;
+  flex-shrink: 0;
+}
+.wp-split-divider::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: rgba(255, 255, 255, 0.15);
+  transition: background 0.15s ease, width 0.15s ease;
+}
+.wp-split-divider:hover::before,
+.wp-split-divider.dragging::before {
+  background: #38bdf8;
+  width: 3px;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.7);
+}
+.wp-divider-handle {
+  width: 6px;
+  height: 42px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  z-index: 2;
+}
+.wp-split-divider:hover .wp-divider-handle,
+.wp-split-divider.dragging .wp-divider-handle {
+  background: #38bdf8;
+  transform: scaleY(1.2);
+}
+body.wp-resizing {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+
+/* Partition Header Bar */
+.wp-header {
+  height: 38px;
+  min-height: 38px;
+  background: linear-gradient(180deg, #131d36 0%, #0d1629 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 10px;
+  gap: 8px;
+  flex-shrink: 0;
+  user-select: none;
+  cursor: default;
+}
+.wp-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.wp-badge {
+  font-family: var(--brand);
+  font-size: 11px;
+  font-weight: 800;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.15);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  padding: 2px 7px;
+  border-radius: 5px;
+  letter-spacing: 0.03em;
+}
+.workspace-partition.active .wp-badge {
+  background: #38bdf8;
+  color: #081329;
+  font-weight: 900;
+}
+.wp-content-selector-wrap select {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #f1f5f9;
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+  outline: none;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+.wp-content-selector-wrap select:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* Mode Switcher Pill (Draw/Annotate vs Pan/Interact) */
+.wp-mode-pill-wrap {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  padding: 2px;
+  gap: 2px;
+}
+.wp-mode-pill-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all 0.14s ease;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.wp-mode-pill-btn:hover {
+  color: #ffffff;
+}
+.wp-mode-pill-btn.active {
+  background: #38bdf8;
+  color: #0b1329;
+  box-shadow: 0 2px 8px rgba(56, 189, 248, 0.4);
+}
+
+.wp-header-center {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.wp-header-center::-webkit-scrollbar { display: none; }
+
+.wp-header-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Action Buttons */
+.wp-action-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #cbd5e1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+.wp-action-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+/* Preset Chips & Bg Switchers */
+.wp-preset-chip, .wp-bg-chip {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  color: #cbd5e1;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-family: var(--mono);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+.wp-preset-chip:hover, .wp-preset-chip.active,
+.wp-bg-chip:hover, .wp-bg-chip.active {
+  background: rgba(56, 189, 248, 0.2);
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.5);
+}
+
+.wp-board-bg-selector {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* PPT Controls in Header */
+.wp-ppt-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.wp-pill-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 3px 8px;
+  border-radius: 5px;
+  font-size: 11.5px;
+  color: #cbd5e1;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+.wp-pill-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+}
+.wp-pill-btn.highlight {
+  background: rgba(56, 189, 248, 0.18);
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.45);
+}
+.wp-pill-btn.highlight:hover {
+  background: rgba(56, 189, 248, 0.32);
+  color: #ffffff;
+}
+.wp-slide-indicator {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: #e2e8f0;
+  font-weight: 600;
+  padding: 0 4px;
+}
+
+/* Partition Body Container */
+.wp-body {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: #f4f6f8;
+  touch-action: none;
+}
+
+/* Base Content Box */
+.wp-content-box {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+}
+
+/* Universal Drawing / Annotation Canvas Overlay */
+.wp-draw-cv {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  z-index: 3;
+  touch-action: none;
+}
+.wp-draw-cv.mode-draw {
+  pointer-events: auto !important;
+  cursor: crosshair;
+}
+.wp-draw-cv.mode-interact {
+  pointer-events: none !important;
+  cursor: default;
+}
+
+/* Grid & Content Canvases */
+.wp-grid-cv,
+.wp-geom-cv,
+.wp-sim-cv,
+.wp-ppt-slide-cv {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  touch-action: none;
+}
+
+/* ───────────────────────────────────────────────────────── */
+/* FLOATING SMART TOOL PALETTE (Primary Board Parity)        */
+/* ───────────────────────────────────────────────────────── */
+.wp-smart-palette {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  background: rgba(11, 19, 41, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-radius: 26px;
+  padding: 4px 10px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+  max-width: 95%;
+}
+.wp-smart-palette:hover {
+  background: rgba(11, 19, 41, 0.96);
+  border-color: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.65);
+}
+
+.wp-smart-palette.collapsed {
+  padding: 2px;
+  background: rgba(11, 19, 41, 0.75);
+  border-radius: 20px;
+}
+.wp-sp-expand-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: none;
+  color: #38bdf8;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 16px;
+  cursor: pointer;
+}
+.wp-sp-expand-btn:hover {
+  background: rgba(56, 189, 248, 0.15);
+}
+
+.wp-sp-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.wp-sp-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.wp-sp-divider {
+  width: 1px;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.12);
+  flex-shrink: 0;
+}
+
+/* Tool Buttons in Smart Palette */
+.wp-sp-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: transparent;
+  border: none;
+  color: #cbd5e1;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+.wp-sp-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+.wp-sp-btn.active {
+  background: #38bdf8;
+  color: #0b1329;
+  box-shadow: 0 2px 8px rgba(56, 189, 248, 0.4);
+}
+
+/* Pen Nib Sizes */
+.wp-sp-size-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+.wp-sp-size-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+.wp-sp-size-btn.active {
+  border-color: #38bdf8;
+  background: rgba(56, 189, 248, 0.2);
+}
+.wp-nib-dot {
+  border-radius: 50%;
+  background: #cbd5e1;
+  display: inline-block;
+}
+.wp-sp-size-btn.active .wp-nib-dot {
+  background: #38bdf8;
+}
+
+/* Color Swatches */
+.wp-sp-color-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.35);
+  cursor: pointer;
+  transition: transform 0.12s ease, border-color 0.12s ease;
+  display: inline-block;
+  flex-shrink: 0;
+}
+.wp-sp-color-dot:hover {
+  transform: scale(1.25);
+  border-color: #ffffff;
+}
+.wp-sp-color-dot.active {
+  transform: scale(1.25);
+  border-color: #ffffff;
+  box-shadow: 0 0 0 2px #38bdf8;
+}
+
+/* Shape Flyout Menu */
+.wp-sp-shape-wrap {
+  position: relative;
+}
+.wp-shape-menu {
+  position: absolute;
+  bottom: 38px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #0d1629;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  z-index: 20;
+  min-width: 105px;
+}
+.wp-shape-menu.hidden {
+  display: none !important;
+}
+.wp-shape-menu button {
+  background: transparent;
+  border: none;
+  color: #cbd5e1;
+  font-size: 11px;
+  font-weight: 600;
+  text-align: left;
+  padding: 5px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.1s ease;
+}
+.wp-shape-menu button:hover {
+  background: rgba(56, 189, 248, 0.18);
+  color: #38bdf8;
+}
+
+/* Collapse Toggle Button */
+.wp-sp-collapse-toggle {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0 4px;
+  transition: color 0.12s ease;
+}
+.wp-sp-collapse-toggle:hover {
+  color: #ffffff;
+}
+
+/* ───────────────────────────────────────────────────────── */
+/* 2D GRAPHABLE WORKSPACE INSIDE PARTITION                   */
+/* ───────────────────────────────────────────────────────── */
+.wp-graph-workspace {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: #0b1329;
+}
+.wp-graph-canvas {
+  flex: 1;
+  width: 100% !important;
+  height: 100% !important;
+  position: relative !important;
+  touch-action: none;
+}
+.wp-graph-controls-panel {
+  background: rgba(11, 19, 41, 0.94);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 5px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 2;
+  backdrop-filter: blur(10px);
+}
+.wp-graph-param-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.wp-param-lbl {
+  font-size: 11px;
+  color: #94a3b8;
+  font-weight: 600;
+}
+.wp-graph-eq-input {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  color: #38bdf8;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 4px;
+  padding: 2px 7px;
+  outline: none;
+}
+.wp-graph-color-picker-wrap {
+  display: flex;
+  align-items: center;
+}
+.wp-graph-sliders-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.wp-graph-sliders-row::-webkit-scrollbar { display: none; }
+
+.wp-slider-pill {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #cbd5e1;
+  white-space: nowrap;
+}
+.wp-slider-pill input[type="range"] {
+  width: 50px;
+  accent-color: #38bdf8;
+  height: 3px;
+  cursor: pointer;
+}
+.wp-val-lbl {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: #38bdf8;
+  min-width: 20px;
+}
+
+/* PPT / PDF Workspace inside Partition */
+.wp-ppt-workspace {
+  position: absolute;
+  inset: 0;
+  background: #081329;
+}
+
+
 
 
 

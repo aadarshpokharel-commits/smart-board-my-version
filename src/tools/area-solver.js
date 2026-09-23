@@ -922,29 +922,115 @@ const GeometryEngine = (() => {
           <b>Detected Shape:</b> <span class="as-tag">${shapeName}</span><br>
           <b>Boundary Vertices / Sampled Points:</b> ${n}<br>
           <b>Coordinates (Grid Space):</b> <span class="as-coords">${vertexCoordList.join(' , ')}</span><br>
-          <b>Perimeter:</b> <code>${formattedPerimeter} ${lengthUnitLabel}</code>
+          <b>Perimeter:</b> <span class="as-pill-val">${formattedPerimeter} ${lengthUnitLabel}</span>
         </div>
       `
     });
 
-    // Step 2: Formula selection
-    const formulaLatex = isPolygon
-      ? 'A = \\frac{1}{2} \\left| \\sum_{i=1}^{n} (x_i y_{i+1} - x_{i+1} y_i) \\right|'
-      : 'A = \\frac{1}{2} \\oint_C (x \\, dy - y \\, dx) \\approx \\frac{1}{2} \\left| \\sum_{i=0}^{n-1} (x_i y_{i+1} - x_{i+1} y_i) \\right|';
+    // Step 2: Formula selection (Student-friendly visual math, zero raw code)
+    let formulaHtml = '';
+    if (isPolygon) {
+      const polyExpanded = n === 3
+        ? `<div class="as-math-expanded">
+             <span class="m-var">A</span> = <span class="m-frac"><span class="m-num">1</span><span class="m-den">2</span></span> &times; |(x<sub>A</sub> y<sub>B</sub> &minus; y<sub>A</sub> x<sub>B</sub>) + (x<sub>B</sub> y<sub>C</sub> &minus; y<sub>B</sub> x<sub>C</sub>) + (x<sub>C</sub> y<sub>A</sub> &minus; y<sub>C</sub> x<sub>A</sub>)|
+           </div>`
+        : (n === 4
+          ? `<div class="as-math-expanded">
+               <span class="m-var">A</span> = <span class="m-frac"><span class="m-num">1</span><span class="m-den">2</span></span> &times; |(x<sub>A</sub> y<sub>B</sub> &minus; y<sub>A</sub> x<sub>B</sub>) + (x<sub>B</sub> y<sub>C</sub> &minus; y<sub>B</sub> x<sub>C</sub>) + (x<sub>C</sub> y<sub>D</sub> &minus; y<sub>C</sub> x<sub>D</sub>) + (x<sub>D</sub> y<sub>A</sub> &minus; y<sub>D</sub> x<sub>A</sub>)|
+             </div>`
+          : '');
 
-    const formulaDesc = isPolygon
-      ? 'Using <b>Gauss\'s Area Formula (Shoelace Formula)</b> for planar polygons with vertices in ordered sequence:'
-      : 'Using <b>Green\'s Theorem in the Plane</b> / Dense Shoelace Integration for arbitrary closed curves:';
+      formulaHtml = `
+        <div class="as-step-p">
+          Using the <b>Shoelace Formula (Coordinate Geometry)</b> for ordered vertices:
+        </div>
+        <div class="as-math-card">
+          <div class="as-math-badge-row">
+            <span class="as-math-type-pill">Coordinate Geometry</span>
+            <span class="as-math-type-sub">${shapeName}</span>
+          </div>
+          <div class="as-math-render">
+            <span class="m-sym">Area</span>
+            <span class="m-op">=</span>
+            <span class="m-frac">
+              <span class="m-num">1</span>
+              <span class="m-den">2</span>
+            </span>
+            <span class="m-op">&times;</span>
+            <span class="m-bracket">|</span>
+            <div class="m-sigma-block">
+              <span class="m-sigma-sup">n</span>
+              <span class="m-sigma">&sum;</span>
+              <span class="m-sigma-sub">i=1</span>
+            </div>
+            <span class="m-term">(x<sub>i</sub> y<sub>i+1</sub> &minus; x<sub>i+1</sub> y<sub>i</sub>)</span>
+            <span class="m-bracket">|</span>
+          </div>
+          ${polyExpanded}
+          <div class="as-math-explain">
+            <span class="as-note-tag">Rule</span>
+            <span>Multiply cross-coordinates around the perimeter, add them together, and multiply the total by &frac12;.</span>
+          </div>
+        </div>
+      `;
+    } else {
+      formulaHtml = `
+        <div class="as-step-p">
+          Using <b>Boundary Coordinate Integration</b> and <b>Grid Decomposition</b>:
+        </div>
+        <div class="as-math-card">
+          <div class="as-math-badge-row">
+            <span class="as-math-type-pill cyan">Analytical Method</span>
+            <span class="as-math-type-sub">Coordinate Integration</span>
+          </div>
+          <div class="as-math-render">
+            <span class="m-sym">Area</span>
+            <span class="m-op">=</span>
+            <span class="m-frac">
+              <span class="m-num">1</span>
+              <span class="m-den">2</span>
+            </span>
+            <span class="m-op">&times;</span>
+            <span class="m-bracket">|</span>
+            <div class="m-sigma-block">
+              <span class="m-sigma-sup">n-1</span>
+              <span class="m-sigma">&sum;</span>
+              <span class="m-sigma-sub">i=0</span>
+            </div>
+            <span class="m-term">(x<sub>i</sub> y<sub>i+1</sub> &minus; x<sub>i+1</sub> y<sub>i</sub>)</span>
+            <span class="m-bracket">|</span>
+          </div>
+          <div class="as-math-explain">
+            <span class="as-note-tag">Concept</span>
+            <span>The closed curve is traced through <b>${n}</b> sequential boundary coordinates to calculate the exact enclosed space.</span>
+          </div>
+        </div>
+
+        <div class="as-grid-formula-card">
+          <div class="as-math-badge-row">
+            <span class="as-math-type-pill green">Visual Grid Method</span>
+            <span class="as-math-type-sub">Classroom Square Counting</span>
+          </div>
+          <div class="as-math-render small">
+            <span class="m-sym">Area</span>
+            <span class="m-op">&approx;</span>
+            <span class="m-term">Full Squares</span>
+            <span class="m-op">+</span>
+            <span class="m-frac">
+              <span class="m-num">1</span>
+              <span class="m-den">2</span>
+            </span>
+            <span class="m-op">&times;</span>
+            <span class="m-term">Partial Edge Squares</span>
+          </div>
+        </div>
+      `;
+    }
 
     steps.push({
       stepNumber: 2,
       title: 'Area Formula',
-      content: `
-        <div class="as-step-p">${formulaDesc}</div>
-        <div class="as-formula-box">
-          <div class="as-math-big">${formulaLatex}</div>
-        </div>
-      `
+      content: formulaHtml
     });
 
     // Step 3: Substitution & Computation
@@ -962,10 +1048,10 @@ const GeometryEngine = (() => {
         const cross = +(x1 * y2 - x2 * y1).toFixed(3);
         sumProducts += cross;
         rows += `<tr>
-          <td>${String.fromCharCode(65 + i)} → ${String.fromCharCode(65 + ((i + 1) % n))}</td>
+          <td>${String.fromCharCode(65 + i)} &rarr; ${String.fromCharCode(65 + ((i + 1) % n))}</td>
           <td>(${x1}, ${y1})</td>
           <td>(${x2}, ${y2})</td>
-          <td>(${x1} × ${y2}) − (${y1} × ${x2})</td>
+          <td>(${x1} &times; ${y2}) &minus; (${y1} &times; ${x2})</td>
           <td class="${cross >= 0 ? 'pos' : 'neg'}">${cross >= 0 ? '+' : ''}${cross}</td>
         </tr>`;
       }
@@ -977,18 +1063,28 @@ const GeometryEngine = (() => {
             </thead>
             <tbody>${rows}</tbody>
             <tfoot>
-              <tr><th colspan="4">Net Cross-Product Sum (Σ)</th><th>${sumProducts.toFixed(3)}</th></tr>
+              <tr><th colspan="4">Net Cross-Product Sum (&Sigma;)</th><th>${sumProducts.toFixed(3)}</th></tr>
             </tfoot>
           </table>
         </div>
-        <div class="as-step-sub">A = 0.5 × |${sumProducts.toFixed(3)}| = <b>${(Math.abs(sumProducts) * 0.5).toFixed(3)} ${unitLabel}</b></div>
+        <div class="as-step-sub">Area = 0.5 &times; |${sumProducts.toFixed(3)}| = <b>${(Math.abs(sumProducts) * 0.5).toFixed(3)} ${unitLabel}</b></div>
       `;
     } else {
+      const netSum = (data.primaryAreaPx / (gridStep * gridStep) * 2).toFixed(3);
       subTableHtml = `
-        <div class="as-step-p">
-          Numerical integration across <b>${n}</b> sequential boundary nodes:<br>
-          Sum of cross-products Σ = <code>${(data.primaryAreaPx / (gridStep * gridStep) * 2).toFixed(3)}</code><br>
-          A = 0.5 × |Σ| = <b>${formattedArea} ${unitLabel}</b>
+        <div class="as-calc-card">
+          <div class="as-calc-row">
+            <span class="as-calc-label">Boundary Sample Points:</span>
+            <span class="as-calc-value"><b>${n}</b> sequential perimeter points</span>
+          </div>
+          <div class="as-calc-row">
+            <span class="as-calc-label">Net Cross-Product Sum (&Sigma;):</span>
+            <span class="as-calc-value cyan">${netSum}</span>
+          </div>
+          <div class="as-calc-row total">
+            <span class="as-calc-label">Calculated Area (A):</span>
+            <span class="as-calc-value yellow">&frac12; &times; |${netSum}| = <b>${formattedArea} ${unitLabel}</b></span>
+          </div>
         </div>
       `;
     }
@@ -1011,7 +1107,7 @@ const GeometryEngine = (() => {
         title: 'Grid Cell Decomposition & Cross-Validation',
         content: `
           <div class="as-step-p">
-            Cross-validation against board grid (grid step = <code>${gridStep} px</code>):
+            Cross-validation against board grid (grid unit = <span class="as-pill-val">${gridStep} px</span>):
           </div>
           <div class="as-grid-stats">
             <div class="as-stat-item green">
@@ -1028,8 +1124,8 @@ const GeometryEngine = (() => {
             </div>
           </div>
           <div class="as-step-calc">
-            A_grid = (${fullCount} × 1.0) + (Σ A_partial = ${partSumUnits}) = <b>${totalGridUnits} ${unitLabel}</b><br>
-            <span class="as-val-status">✓ Verified: Shoelace (${formattedArea}) ↔ Grid Integration (${totalGridUnits}) match with <b>${crossValidation.agreementPercent}%</b> agreement.</span>
+            A_grid = (${fullCount} &times; 1.0) + (&Sigma; A_partial = ${partSumUnits}) = <b>${totalGridUnits} ${unitLabel}</b><br>
+            <span class="as-val-status">✓ Verified: Shoelace (${formattedArea}) &harr; Grid Integration (${totalGridUnits}) match with <b>${crossValidation.agreementPercent}%</b> agreement.</span>
           </div>
         `
       });

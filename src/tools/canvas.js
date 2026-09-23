@@ -8,13 +8,13 @@ const Canvas = (() => {
 
   const BOARD_BACKGROUNDS = [
     // 1. Classic & Plain
-    { id: 'green',          category: 'plain',   label: 'Chalkboard Green',    bg: '#0e2419', pattern: 'grid', line: 'rgba(255,255,255,0.075)', major: 'rgba(255,255,255,0.15)' },
+    { id: 'white',          category: 'plain',   label: 'Soft Whiteboard',     bg: '#f4f6f8', pattern: 'grid', line: 'rgba(15,23,42,0.055)', major: 'rgba(15,23,42,0.12)' },
     { id: 'black',          category: 'plain',   label: 'Blackboard Deep',     bg: '#0b0d13', pattern: 'grid', line: 'rgba(255,255,255,0.07)',  major: 'rgba(255,255,255,0.14)' },
     { id: 'navy',           category: 'plain',   label: 'Cosmic Navy',         bg: '#0a1224', pattern: 'grid', line: 'rgba(148,163,184,0.08)', major: 'rgba(148,163,184,0.16)' },
-    { id: 'white',          category: 'plain',   label: 'Whiteboard Crisp',    bg: '#ffffff', pattern: 'grid', line: 'rgba(15,23,42,0.07)',    major: 'rgba(15,23,42,0.14)'    },
-    { id: 'plain-green',    category: 'plain',   label: 'Chalkboard Plain',    bg: '#0e2419', pattern: 'none' },
+    { id: 'green',          category: 'plain',   label: 'Chalkboard Green',    bg: '#0e2419', pattern: 'grid', line: 'rgba(255,255,255,0.075)', major: 'rgba(255,255,255,0.15)' },
+    { id: 'plain-white',    category: 'plain',   label: 'Soft White Plain',    bg: '#f4f6f8', pattern: 'none' },
     { id: 'plain-black',    category: 'plain',   label: 'Deep Obsidian Plain', bg: '#080a0f', pattern: 'none' },
-    { id: 'plain-white',    category: 'plain',   label: 'Studio White Plain',  bg: '#ffffff', pattern: 'none' },
+    { id: 'plain-green',    category: 'plain',   label: 'Chalkboard Plain',    bg: '#0e2419', pattern: 'none' },
     { id: 'plain-cream',    category: 'plain',   label: 'Warm Ivory Sepia',    bg: '#fdfaf2', pattern: 'none' },
     { id: 'plain-charcoal', category: 'plain',   label: 'Studio Charcoal',     bg: '#181e29', pattern: 'none' },
 
@@ -24,11 +24,11 @@ const Canvas = (() => {
     { id: 'math-polar',     category: 'math',    label: 'Polar Coordinates',  bg: '#0a1224', pattern: 'polar', line: 'rgba(148,163,184,0.13)', major: 'rgba(234,179,8,0.45)' },
 
     // 3. Writing & Languages
-    { id: 'ruled-white',    category: 'writing', label: 'Notebook Ruled',      bg: '#ffffff', pattern: 'ruled', line: 'rgba(59,130,246,0.24)', margin: 'rgba(239,68,68,0.45)', step: 34 },
+    { id: 'ruled-white',    category: 'writing', label: 'Notebook Ruled',      bg: '#f4f6f8', pattern: 'ruled', line: 'rgba(59,130,246,0.24)', margin: 'rgba(239,68,68,0.45)', step: 34 },
     { id: 'ruled-cream',    category: 'writing', label: 'Vintage Ruled Ivory', bg: '#fbf7ee', pattern: 'ruled', line: 'rgba(120,80,40,0.20)', margin: 'rgba(200,60,60,0.40)', step: 36 },
     { id: 'ruled-green',    category: 'writing', label: 'Chalkboard Ruled',    bg: '#0e2419', pattern: 'ruled', line: 'rgba(255,255,255,0.16)', margin: 'rgba(234,179,8,0.45)', step: 38 },
-    { id: 'ruled-wide',     category: 'writing', label: 'Wide Ruled Elementary',bg: '#ffffff', pattern: 'ruled', line: 'rgba(59,130,246,0.22)', margin: 'rgba(239,68,68,0.40)', step: 52 },
-    { id: 'ruled-fourline', category: 'writing', label: '4-Line English Guide',bg: '#ffffff', pattern: 'fourline', line: 'rgba(59,130,246,0.30)', midLine: 'rgba(239,68,68,0.35)', step: 48 },
+    { id: 'ruled-wide',     category: 'writing', label: 'Wide Ruled Elementary',bg: '#f4f6f8', pattern: 'ruled', line: 'rgba(59,130,246,0.22)', margin: 'rgba(239,68,68,0.40)', step: 52 },
+    { id: 'ruled-fourline', category: 'writing', label: '4-Line English Guide',bg: '#f4f6f8', pattern: 'fourline', line: 'rgba(59,130,246,0.30)', midLine: 'rgba(239,68,68,0.35)', step: 48 },
 
     // 4. Science & Engineering
     { id: 'sci-blueprint',   category: 'science', label: 'Engineering Blueprint', bg: '#092542', pattern: 'grid', line: 'rgba(56,189,248,0.14)', major: 'rgba(56,189,248,0.32)' },
@@ -296,7 +296,7 @@ const Canvas = (() => {
       if (line) currentBoardColor.line = line;
       if (major) currentBoardColor.major = major;
     } else {
-      bg = bg || (id && id.startsWith('#') ? id : '#0e2419');
+      bg = bg || (id && id.startsWith('#') ? id : '#f4f6f8');
       if (!line) {
         const colors = getGridColors(bg);
         line = colors.line;
@@ -311,6 +311,16 @@ const Canvas = (() => {
     // Harmonize UI elements (page tabs & statusbar footer) with board color
     document.documentElement.style.setProperty('--board-bg', currentBoardColor.bg);
     document.documentElement.setAttribute('data-board-theme', currentBoardColor.id);
+
+    // Auto-adjust pen color contrast if pen color would match background
+    if (typeof App !== 'undefined' && App.currentColor && App.setColor) {
+      const isNowLight = (currentBoardColor.id === 'white' || currentBoardColor.id === 'plain-white' || currentBoardColor.id === 'ruled-white' || currentBoardColor.bg === '#f4f6f8' || currentBoardColor.bg === '#ffffff' || currentBoardColor.bg === '#f1f5f9');
+      if (isNowLight && App.currentColor.toLowerCase() === '#ffffff') {
+        App.setColor('#0f172a');
+      } else if (!isNowLight && (App.currentColor.toLowerCase() === '#0f172a' || App.currentColor.toLowerCase() === '#000000')) {
+        App.setColor('#ffffff');
+      }
+    }
 
     drawGrid();
   }

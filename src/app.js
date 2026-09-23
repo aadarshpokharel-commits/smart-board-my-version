@@ -6,7 +6,7 @@ const App = (() => {
 
   // ── state ──
   let currentTool   = 'select';
-  let currentColor  = '#ffffff';
+  let currentColor  = '#0f172a';
   let penSize       = 2;
   let eraserSize    = 26;
   let activeChapter = 1;
@@ -60,6 +60,7 @@ const App = (() => {
     // Wire tools if available
     if (typeof PptPresenter !== 'undefined') PptPresenter.init();
     if (typeof ImageTool !== 'undefined') ImageTool.init();
+    if (typeof WorkspaceSplit !== 'undefined') WorkspaceSplit.init();
 
     // Keyboard & Fullscreen sync
     document.addEventListener('keydown', onKey);
@@ -379,6 +380,12 @@ const App = (() => {
   function setTool(tool) {
     const changed = currentTool !== tool;
     currentTool = tool;
+
+    // Route tool changes to active split screen partition if active
+    if (typeof WorkspaceSplit !== 'undefined' && WorkspaceSplit.getMode() !== 'normal') {
+      WorkspaceSplit.setActivePartitionTool(tool);
+    }
+
     if (tool !== 'select' && typeof BoardClipboard !== 'undefined' && BoardClipboard.clearSelection) {
       BoardClipboard.clearSelection();
     }
@@ -427,6 +434,12 @@ const App = (() => {
   // ─────────────────────────────────────────────
   function setColor(hex) {
     currentColor = hex;
+
+    // Route color changes to active split screen partition if active
+    if (typeof WorkspaceSplit !== 'undefined' && WorkspaceSplit.getMode() !== 'normal') {
+      WorkspaceSplit.setActivePartitionColor(hex);
+    }
+
     document.querySelectorAll('.color-dot, .fp-color-dot').forEach(d => {
       const match = (d.dataset.hex && d.dataset.hex.toLowerCase() === hex.toLowerCase()) ||
                     (d.style.background && rgbToHex(d.style.background) === hex.toLowerCase());
@@ -844,6 +857,16 @@ const App = (() => {
       pages[currentPage].label = fileName.replace(/\.(mbp|json)$/i, '');
     }
     renderPageTabs();
+
+    // Restore workspace partitioning state if saved
+    if (typeof WorkspaceSplit !== 'undefined') {
+      if (data.splitMode && data.splitMode !== 'normal') {
+        WorkspaceSplit.restore(data.splitMode, data.splitRatio, data.partitionsState);
+      } else {
+        WorkspaceSplit.setMode('normal');
+      }
+    }
+
     showToast(`✓ Loaded "${fileName || 'Board Session'}"`);
   }
 
@@ -866,7 +889,10 @@ const App = (() => {
       currentPage,
       chapter: activeChapter,
       subject: activeSubject,
-      savedAt: new Date().toISOString()
+      savedAt: new Date().toISOString(),
+      splitMode: (typeof WorkspaceSplit !== 'undefined') ? WorkspaceSplit.getMode() : 'normal',
+      splitRatio: (typeof WorkspaceSplit !== 'undefined') ? WorkspaceSplit.getSplitRatio() : 50,
+      partitionsState: (typeof WorkspaceSplit !== 'undefined') ? WorkspaceSplit.serialize() : null
     };
 
     if (window.electronAPI) {
@@ -1034,6 +1060,10 @@ const App = (() => {
   }
 
   function undo() {
+    if (typeof WorkspaceSplit !== 'undefined' && WorkspaceSplit.getMode() !== 'normal') {
+      WorkspaceSplit.undoActive();
+      return;
+    }
     const sim = isSimulationActive();
     if (sim === 'physics' && window.PhysicsLab && typeof PhysicsLab.undo === 'function') {
       PhysicsLab.undo();
@@ -1053,6 +1083,10 @@ const App = (() => {
   }
 
   function redo() {
+    if (typeof WorkspaceSplit !== 'undefined' && WorkspaceSplit.getMode() !== 'normal') {
+      WorkspaceSplit.redoActive();
+      return;
+    }
     const sim = isSimulationActive();
     if (sim === 'physics' && window.PhysicsLab && typeof PhysicsLab.redo === 'function') {
       PhysicsLab.redo();

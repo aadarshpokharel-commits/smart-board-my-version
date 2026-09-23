@@ -36,6 +36,9 @@ const Drawing = (() => {
   // STROKE CORE — Board Coordinates & Zero Latency
   // ─────────────────────────────────────────────
   function startStrokeAt(bx, by, pressure = 0.5) {
+    if (typeof UI !== 'undefined' && UI.closeAllFlyouts) {
+      UI.closeAllFlyouts();
+    }
     isDrawing = true;
     const qx = Math.round(bx * 10) * 0.1;
     const qy = Math.round(by * 10) * 0.1;
