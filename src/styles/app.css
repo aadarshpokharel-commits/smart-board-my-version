@@ -5173,10 +5173,12 @@ html {
   -webkit-overflow-scrolling: touch;
 }
 
-/* 5. Canvas zone — block ALL default touch behavior (handled in JS) */
-#canvas-zone, #shape-canvas, #draw-canvas {
+/* 5. Canvas zone — block ALL default touch behavior & promote to dedicated GPU layers */
+#canvas-zone, #shape-canvas, #draw-canvas, #preview-canvas, #ui-canvas {
   touch-action: none;
   overscroll-behavior: none;
+  will-change: transform;
+  transform: translateZ(0);
 }
 
 /* 6. AI Drawer — ensure it scrolls with touch */

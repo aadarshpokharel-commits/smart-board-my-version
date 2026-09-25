@@ -1460,9 +1460,10 @@ const GraphObject = (() => {
       }
     }
 
-    const numSamples = Math.min(1400, Math.max(350, Math.round(plotW * 2.8)));
+    const isInteracting = !!(g._isDragging || g._isInteracting);
+    const numSamples = isInteracting ? Math.min(400, Math.max(250, Math.round(plotW * 0.9))) : Math.min(1000, Math.max(350, Math.round(plotW * 1.8)));
     const dx = spanX / numSamples;
-    const numSamplesY = Math.min(1400, Math.max(350, Math.round(plotH * 2.8)));
+    const numSamplesY = isInteracting ? Math.min(400, Math.max(250, Math.round(plotH * 0.9))) : Math.min(1000, Math.max(350, Math.round(plotH * 1.8)));
     const dy = spanY / numSamplesY;
 
     // ── Ghost Parent Curve (y = f(x)) Overlay during Transformations ──

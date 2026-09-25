@@ -615,7 +615,22 @@ const Canvas = (() => {
   // ─────────────────────────────────────────────
   // RENDER & STROKES
   // ─────────────────────────────────────────────
-  function renderShapes() {
+  let renderScheduled = false;
+
+  function renderShapes(immediate = false) {
+    if (immediate) {
+      _doRenderShapes();
+      return;
+    }
+    if (renderScheduled) return;
+    renderScheduled = true;
+    requestAnimationFrame(() => {
+      renderScheduled = false;
+      _doRenderShapes();
+    });
+  }
+
+  function _doRenderShapes() {
     if (!shapeCtx) return;
     shapeCtx.save();
     shapeCtx.setTransform(currentDPR, 0, 0, currentDPR, 0, 0);

@@ -7,6 +7,11 @@ app.commandLine.appendSwitch('disable-background-networking');
 app.commandLine.appendSwitch('disable-client-side-phishing-detection');
 app.commandLine.appendSwitch('no-proxy-server');
 app.commandLine.appendSwitch('disable-component-update');
+// ── Hardware Acceleration & Touch Optimization for Smart Boards ──
+app.commandLine.appendSwitch('ignore-gpu-blocklist');
+app.commandLine.appendSwitch('enable-gpu-rasterization');
+app.commandLine.appendSwitch('enable-zero-copy');
+app.commandLine.appendSwitch('enable-native-gpu-memory-buffers');
 process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = 'true';
 
 // ── Disable default application menu bar (File, Edit, View, Window, Help) ──
