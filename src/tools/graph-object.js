@@ -388,7 +388,7 @@ const GraphObject = (() => {
       category: 'algebraic',
       name: 'Linear Function',
       badge: 'Algebraic',
-      formula: 'm*x + c',
+      formula: 'mx + c',
       defaultExpr: '2*x - 1',
       parentExpr: 'x',
       domain: 'x ∈ (-∞, ∞)',
@@ -401,7 +401,7 @@ const GraphObject = (() => {
       category: 'algebraic',
       name: 'Quadratic Function',
       badge: 'Algebraic',
-      formula: 'a*x^2 + b*x + c',
+      formula: 'ax² + bx + c',
       defaultExpr: 'x^2 - 4',
       parentExpr: 'x^2',
       domain: 'x ∈ (-∞, ∞)',
@@ -414,7 +414,7 @@ const GraphObject = (() => {
       category: 'algebraic',
       name: 'Cubic Function',
       badge: 'Algebraic',
-      formula: 'a*x^3 + b*x^2 + c*x + d',
+      formula: 'ax³ + bx² + cx + d',
       defaultExpr: 'x^3 - 3*x',
       parentExpr: 'x^3',
       domain: 'x ∈ (-∞, ∞)',
@@ -427,7 +427,7 @@ const GraphObject = (() => {
       category: 'algebraic',
       name: 'Polynomial Function (Degree 4)',
       badge: 'Algebraic',
-      formula: 'x^4 - 4*x^2',
+      formula: 'x⁴ - 4x²',
       defaultExpr: 'x^4 - 4*x^2',
       parentExpr: 'x^4',
       domain: 'x ∈ (-∞, ∞)',
@@ -440,7 +440,7 @@ const GraphObject = (() => {
       category: 'algebraic',
       name: 'Rational Function',
       badge: 'Algebraic',
-      formula: '(x^2 - 1)/(x^2 + 1)',
+      formula: '(x²-1)/(x²+1)',
       defaultExpr: '(x^2 - 1)/(x^2 + 1)',
       parentExpr: '(x^2 - 1)/(x^2 + 1)',
       domain: 'Denominator ≠ 0',
@@ -814,90 +814,15 @@ const GraphObject = (() => {
       category: 'special',
       name: 'Piecewise Continuous Function',
       badge: 'Piecewise',
-      formula: '{ -x-1 if x<-1; x^2 if x<=1; 2-x otherwise }',
+      formula: 'piecewise(x)',
       defaultExpr: '{ -x-1 if x<-1; x^2 if x<=1; 2-x otherwise }',
       parentExpr: '{ -x-1 if x<-1; x^2 if x<=1; 2-x otherwise }',
       domain: 'x ∈ (-∞, ∞)',
       range: 'Continuous piecewise',
-      description: 'Compound multi-rule function with connected polynomial and linear segments.',
+      description: 'Compound multi-rule function: { -x-1 if x<-1; x² if x≤1; 2-x otherwise } with connected polynomial and linear segments.',
       params: { a: 1, b: 1, h: 0, k: 0 }
     }
   };
-
-  function formatMathDisplay(familyId, a, b, h, k) {
-    const aVal = a !== undefined ? a : 1;
-    const bVal = b !== undefined ? b : 1;
-    const hVal = h !== undefined ? h : 0;
-    const kVal = k !== undefined ? k : 0;
-
-    if (familyId === 'constant') {
-      return `${kVal}`;
-    }
-
-    let inner = 'x';
-    if (hVal > 0) inner = `x - ${hVal}`;
-    else if (hVal < 0) inner = `x + ${Math.abs(hVal)}`;
-
-    if (bVal !== 1) {
-      if (bVal === -1) inner = (hVal !== 0) ? `-( ${inner} )` : `-x`;
-      else inner = (hVal !== 0) ? `${bVal}(${inner})` : `${bVal}x`;
-    }
-
-    let core = '';
-    switch (familyId) {
-      case 'identity': core = inner; break;
-      case 'linear': core = inner; break;
-      case 'quadratic': core = (inner === 'x') ? 'x²' : `(${inner})²`; break;
-      case 'cubic': core = (inner === 'x') ? 'x³' : `(${inner})³`; break;
-      case 'polynomial': core = (inner === 'x') ? 'x⁴ - 4x²' : `(${inner})⁴ - 4(${inner})²`; break;
-      case 'rational': core = `(${inner}² - 1) / (${inner}² + 1)`; break;
-      case 'reciprocal': core = `1 / (${inner})`; break;
-      case 'radical': core = `√(${inner})`; break;
-      case 'modulus': core = `|${inner}|`; break;
-      case 'exponential': core = `2^(${inner})`; break;
-      case 'logarithmic': core = `ln(${inner})`; break;
-      case 'trig_sin': core = `sin(${inner})`; break;
-      case 'trig_cos': core = `cos(${inner})`; break;
-      case 'trig_tan': core = `tan(${inner})`; break;
-      case 'trig_csc': core = `csc(${inner})`; break;
-      case 'trig_sec': core = `sec(${inner})`; break;
-      case 'trig_cot': core = `cot(${inner})`; break;
-      case 'inv_asin': core = `sin⁻¹(${inner})`; break;
-      case 'inv_acos': core = `cos⁻¹(${inner})`; break;
-      case 'inv_atan': core = `tan⁻¹(${inner})`; break;
-      case 'inv_acot': core = `cot⁻¹(${inner})`; break;
-      case 'inv_asec': core = `sec⁻¹(${inner})`; break;
-      case 'inv_acsc': core = `csc⁻¹(${inner})`; break;
-      case 'hyp_sinh': core = `sinh(${inner})`; break;
-      case 'hyp_cosh': core = `cosh(${inner})`; break;
-      case 'hyp_tanh': core = `tanh(${inner})`; break;
-      case 'hyp_csch': core = `csch(${inner})`; break;
-      case 'hyp_sech': core = `sech(${inner})`; break;
-      case 'hyp_coth': core = `coth(${inner})`; break;
-      case 'spec_sgn': core = `sgn(${inner})`; break;
-      case 'spec_floor': core = `⌊${inner}⌋`; break;
-      case 'spec_ceil': core = `⌈${inner}⌉`; break;
-      case 'spec_frac': core = `{${inner}}`; break;
-      case 'spec_piecewise': return '{ -x-1 if x<-1; x² if x≤1; 2-x otherwise }';
-      default: core = inner; break;
-    }
-
-    let full = core;
-    if (aVal === -1) {
-      full = `-${core}`;
-    } else if (aVal !== 1) {
-      if (/^[a-z|√⌊⌈{]/i.test(core)) {
-        full = `${aVal} ${core}`;
-      } else {
-        full = `${aVal}·${core}`;
-      }
-    }
-
-    if (kVal > 0) full = `${full} + ${kVal}`;
-    else if (kVal < 0) full = `${full} - ${Math.abs(kVal)}`;
-
-    return full;
-  }
 
   function buildTransformedExpr(parentFamily, a, b, h, k) {
     if (!parentFamily) return 'x';
@@ -966,7 +891,15 @@ const GraphObject = (() => {
     return full;
   }
 
-  function formatMathDisplay(familyId, a, b, h, k) {
+  function formatMathDisplay(familyIdOrExpr, a, b, h, k) {
+    if (a === undefined && b === undefined && h === undefined && k === undefined) {
+      if (!familyIdOrExpr) return 'x';
+      let s = String(familyIdOrExpr).trim();
+      s = s.replace(/\^2\b/g, '²').replace(/\^3\b/g, '³').replace(/\^4\b/g, '⁴').replace(/\^x\b/g, 'ˣ');
+      s = s.replace(/\*/g, '·').replace(/sqrt\b/g, '√');
+      return s;
+    }
+    const familyId = familyIdOrExpr;
     const aVal = a !== undefined ? a : 1;
     const bVal = b !== undefined ? b : 1;
     const hVal = h !== undefined ? h : 0;
@@ -1018,6 +951,7 @@ const GraphObject = (() => {
       case 'spec_floor': core = `⌊${inner}⌋`; break;
       case 'spec_ceil': core = `⌈${inner}⌉`; break;
       case 'spec_frac': core = `{${inner}}`; break;
+      case 'spec_piecewise': return '{ -x-1 if x<-1; x² if x≤1; 2-x otherwise }';
       default: core = inner; break;
     }
 
@@ -1219,9 +1153,110 @@ const GraphObject = (() => {
     };
   }
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // 6. HIGH-PRECISION GRAPH RENDERER WITH GHOST PARENT CURVE
-  // ─────────────────────────────────────────────────────────────────────────────
+  function getEquationDomainRangeText(eq, xMin, xMax) {
+    if (!eq || !eq.expr) return { domain: 'ℝ', range: 'ℝ' };
+
+    // 1. Domain
+    const hasDomMin = (eq.domainMin !== null && eq.domainMin !== undefined && eq.domainMin !== '' && !isNaN(parseFloat(eq.domainMin)));
+    const hasDomMax = (eq.domainMax !== null && eq.domainMax !== undefined && eq.domainMax !== '' && !isNaN(parseFloat(eq.domainMax)));
+    const domMin = hasDomMin ? parseFloat(eq.domainMin) : -Infinity;
+    const domMax = hasDomMax ? parseFloat(eq.domainMax) : Infinity;
+    const lBrk = eq.domainMinInc !== false ? '[' : '(';
+    const rBrk = eq.domainMaxInc !== false ? ']' : ')';
+
+    let domainStr = 'ℝ';
+    if (hasDomMin && hasDomMax) {
+      domainStr = `${lBrk}${domMin}, ${domMax}${rBrk}`;
+    } else if (hasDomMin) {
+      domainStr = `${lBrk}${domMin}, ∞)`;
+    } else if (hasDomMax) {
+      domainStr = `(-∞, ${domMax}${rBrk}`;
+    } else {
+      const raw = (eq.expr || '').toLowerCase().trim();
+      if (raw.includes('sqrt') || raw.startsWith('√')) domainStr = '[0, ∞)';
+      else if (raw.includes('ln(') || raw.includes('log(')) domainStr = '(0, ∞)';
+      else if (raw === '1/x') domainStr = 'x ≠ 0';
+      else domainStr = 'ℝ';
+    }
+
+    // 2. Range
+    const hasRngMin = (eq.rangeMin !== null && eq.rangeMin !== undefined && eq.rangeMin !== '' && !isNaN(parseFloat(eq.rangeMin)));
+    const hasRngMax = (eq.rangeMax !== null && eq.rangeMax !== undefined && eq.rangeMax !== '' && !isNaN(parseFloat(eq.rangeMax)));
+    const rlBrk = eq.rangeMinInc !== false ? '[' : '(';
+    const rrBrk = eq.rangeMaxInc !== false ? ']' : ')';
+
+    let rangeStr = 'ℝ';
+    if (hasRngMin && hasRngMax) {
+      rangeStr = `${rlBrk}${parseFloat(eq.rangeMin)}, ${parseFloat(eq.rangeMax)}${rrBrk}`;
+    } else if (hasRngMin) {
+      rangeStr = `${rlBrk}${parseFloat(eq.rangeMin)}, ∞)`;
+    } else if (hasRngMax) {
+      rangeStr = `(-∞, ${parseFloat(eq.rangeMax)}${rrBrk}`;
+    } else {
+      try {
+        const fn = compile(eq.expr);
+        const evalMin = isFinite(domMin) ? domMin : (xMin !== undefined ? xMin : -10);
+        const evalMax = isFinite(domMax) ? domMax : (xMax !== undefined ? xMax : 10);
+        const span = Math.max(0.1, evalMax - evalMin);
+        const steps = 140;
+        let yMin = Infinity, yMax = -Infinity, valid = 0;
+
+        for (let s = 0; s <= steps; s++) {
+          const vx = evalMin + (s / steps) * span;
+          const vy = fn(vx);
+          if (typeof vy === 'number' && isFinite(vy) && !isNaN(vy)) {
+            valid++;
+            if (vy < yMin) yMin = vy;
+            if (vy > yMax) yMax = vy;
+          }
+        }
+
+        if (valid > 0) {
+          if (Math.abs(yMax - yMin) < 1e-4) {
+            const cVal = Math.round(yMin * 100) / 100;
+            rangeStr = `{${cVal}}`;
+          } else {
+            const rMinR = Math.round(yMin * 10) / 10;
+            const rMaxR = Math.round(yMax * 10) / 10;
+            if (!hasDomMin && !hasDomMax) {
+              const raw = (eq.expr || '').toLowerCase().trim();
+              if (raw === 'sin(x)' || raw === 'cos(x)' || raw === 'sin' || raw === 'cos') rangeStr = '[-1, 1]';
+              else if (raw === 'x^2' || raw === 'x²' || raw === 'abs(x)' || raw === '|x|') rangeStr = '[0, ∞)';
+              else if (raw === 'sqrt(x)' || raw === '√x') rangeStr = '[0, ∞)';
+              else if (raw === 'e^x' || raw === 'exp(x)') rangeStr = '(0, ∞)';
+              else rangeStr = `[${rMinR}, ${rMaxR}]`;
+            } else {
+              rangeStr = `[${rMinR}, ${rMaxR}]`;
+            }
+          }
+        }
+      } catch (_) {
+        rangeStr = 'ℝ';
+      }
+    }
+
+    return { domain: domainStr, range: rangeStr };
+  }
+
+  function drawEndpointMarker(ctx, sx, sy, color, isInclusive, boardBg) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(sx, sy, 5.5, 0, Math.PI * 2);
+    if (isInclusive) {
+      ctx.fillStyle = color || '#38bdf8';
+      ctx.fill();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = boardBg || '#0b1120';
+      ctx.fill();
+      ctx.strokeStyle = color || '#38bdf8';
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
 
   function draw(ctx, g) {
     if (!g || g.w <= 0 || g.h <= 0) return;
@@ -1251,32 +1286,35 @@ const GraphObject = (() => {
     ctx.fill();
 
     // Title & Equal Aspect Badge
+    const titleText = `📈 ${g.title || 'Graph'}`;
+    ctx.font = 'bold 12.5px system-ui, sans-serif';
+    const titleW = ctx.measureText(titleText).width;
     ctx.fillStyle = isLight ? '#0f172a' : '#ffffff';
-    ctx.font = 'bold 13px system-ui, sans-serif';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    ctx.fillText(`📈 ${g.title || '2D Graphable'}`, gx + 14, gy + 19);
+    ctx.fillText(titleText, gx + 12, gy + 19);
 
-    let badgeRight = gx + 175;
-    if (g.equalAspect && gw >= 520) {
+    let leftEnd = gx + 12 + titleW + 8;
+    if (g.equalAspect && gw >= 760) {
+      const scaleW = 66;
       ctx.fillStyle = isLight ? 'rgba(2, 132, 199, 0.12)' : 'rgba(56, 189, 248, 0.18)';
       ctx.strokeStyle = isLight ? 'rgba(2, 132, 199, 0.4)' : 'rgba(56, 189, 248, 0.5)';
       ctx.lineWidth = 1;
       ctx.beginPath();
-      if (ctx.roundRect) ctx.roundRect(gx + 175, gy + 9, 72, 20, 10);
-      else ctx.rect(gx + 175, gy + 9, 72, 20);
+      if (ctx.roundRect) ctx.roundRect(leftEnd, gy + 9, scaleW, 20, 10);
+      else ctx.rect(leftEnd, gy + 9, scaleW, 20);
       ctx.fill();
       ctx.stroke();
 
       ctx.fillStyle = isLight ? '#0284c7' : '#38bdf8';
-      ctx.font = '600 10.5px system-ui, sans-serif';
+      ctx.font = '600 10px system-ui, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('1:1 Scale', gx + 211, gy + 19);
-      badgeRight = gx + 252;
+      ctx.fillText('1:1 Scale', leftEnd + scaleW / 2, gy + 19);
+      leftEnd += scaleW + 8;
     }
 
-    // Quick Action Header Buttons & Swatches (Board Color, Line Color, Zoom, Reset, Studio)
-    drawHeaderControls(ctx, g, badgeRight, isLight);
+    // Quick Action Header Buttons & Swatches (Equation Badges, Compare Button, Domain & Range, Line Color, Zoom, Reset, Studio)
+    drawHeaderControls(ctx, g, leftEnd, isLight);
 
     // Plot Viewport Bounds
     const padL = 42, padR = 20, padT = 48, padB = 30;
@@ -1465,16 +1503,11 @@ const GraphObject = (() => {
           pLast = sy;
         }
         ctx.stroke();
-
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-        ctx.font = 'italic 10px monospace';
-        ctx.textAlign = 'right';
-        ctx.fillText(`Parent: y = ${g.activeParentExpr}`, plotX + plotW - 10, plotY + 18);
         ctx.restore();
       }
     }
 
-    // ── Draw Equations ──
+    // ── Draw Equations with Domain & Range Restrictions ──
     if (g.equations && g.equations.length) {
       g.equations.forEach(eq => {
         if (!eq.visible || !eq.expr) return;
@@ -1486,6 +1519,22 @@ const GraphObject = (() => {
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
 
+        // Function Domain restrictions [domainMin, domainMax]
+        const hasDomMin = (eq.domainMin !== null && eq.domainMin !== undefined && eq.domainMin !== '' && !isNaN(parseFloat(eq.domainMin)));
+        const hasDomMax = (eq.domainMax !== null && eq.domainMax !== undefined && eq.domainMax !== '' && !isNaN(parseFloat(eq.domainMax)));
+        const domMin = hasDomMin ? parseFloat(eq.domainMin) : -Infinity;
+        const domMax = hasDomMax ? parseFloat(eq.domainMax) : Infinity;
+        const domMinInc = eq.domainMinInc !== false;
+        const domMaxInc = eq.domainMaxInc !== false;
+
+        // Function Range restrictions [rangeMin, rangeMax]
+        const hasRngMin = (eq.rangeMin !== null && eq.rangeMin !== undefined && eq.rangeMin !== '' && !isNaN(parseFloat(eq.rangeMin)));
+        const hasRngMax = (eq.rangeMax !== null && eq.rangeMax !== undefined && eq.rangeMax !== '' && !isNaN(parseFloat(eq.rangeMax)));
+        const rngMin = hasRngMin ? parseFloat(eq.rangeMin) : -Infinity;
+        const rngMax = hasRngMax ? parseFloat(eq.rangeMax) : Infinity;
+        const rngMinInc = eq.rangeMinInc !== false;
+        const rngMaxInc = eq.rangeMaxInc !== false;
+
         ctx.beginPath();
         let started = false;
         let lastCoord = 0;
@@ -1494,11 +1543,27 @@ const GraphObject = (() => {
           // Horizontal Curve: x = f(y)
           for (let i = 0; i <= numSamplesY; i++) {
             const vy = yMin + i * dy;
-            const vx = fn(vy);
-            if (isNaN(vx) || !isFinite(vx)) {
-              started = false;
+            const inRange = (!hasRngMin || (rngMinInc ? vy >= rngMin - 1e-7 : vy > rngMin + 1e-7)) &&
+                            (!hasRngMax || (rngMaxInc ? vy <= rngMax + 1e-7 : vy < rngMax - 1e-7));
+
+            if (!inRange) {
+              if (started) { ctx.stroke(); ctx.beginPath(); started = false; }
               continue;
             }
+
+            const vx = fn(vy);
+            if (isNaN(vx) || !isFinite(vx)) {
+              if (started) { ctx.stroke(); ctx.beginPath(); started = false; }
+              continue;
+            }
+
+            const inDomain = (!hasDomMin || (domMinInc ? vx >= domMin - 1e-7 : vx > domMin + 1e-7)) &&
+                             (!hasDomMax || (domMaxInc ? vx <= domMax + 1e-7 : vx < domMax - 1e-7));
+            if (!inDomain) {
+              if (started) { ctx.stroke(); ctx.beginPath(); started = false; }
+              continue;
+            }
+
             const sx = toScreenX(vx);
             const sy = toScreenY(vy);
             if (!started) {
@@ -1513,11 +1578,43 @@ const GraphObject = (() => {
           // Vertical Curve: y = f(x)
           for (let i = 0; i <= numSamples; i++) {
             const vx = xMin + i * dx;
-            const vy = fn(vx);
-            if (isNaN(vy) || !isFinite(vy)) {
-              started = false;
+
+            // Check if x is within function's specified domain
+            const inDomain = (!hasDomMin || (domMinInc ? vx >= domMin - 1e-7 : vx > domMin + 1e-7)) &&
+                             (!hasDomMax || (domMaxInc ? vx <= domMax + 1e-7 : vx < domMax - 1e-7));
+
+            if (!inDomain) {
+              if (started) {
+                ctx.stroke();
+                ctx.beginPath();
+                started = false;
+              }
               continue;
             }
+
+            const vy = fn(vx);
+            if (isNaN(vy) || !isFinite(vy)) {
+              if (started) {
+                ctx.stroke();
+                ctx.beginPath();
+                started = false;
+              }
+              continue;
+            }
+
+            // Check if y is within function's specified range restriction
+            const inRange = (!hasRngMin || (rngMinInc ? vy >= rngMin - 1e-7 : vy > rngMin + 1e-7)) &&
+                            (!hasRngMax || (rngMaxInc ? vy <= rngMax + 1e-7 : vy < rngMax - 1e-7));
+
+            if (!inRange) {
+              if (started) {
+                ctx.stroke();
+                ctx.beginPath();
+                started = false;
+              }
+              continue;
+            }
+
             const sx = toScreenX(vx);
             const sy = toScreenY(vy);
 
@@ -1537,6 +1634,20 @@ const GraphObject = (() => {
             lastCoord = sy;
           }
           ctx.stroke();
+
+          // Render endpoint markers at domain boundaries
+          if (hasDomMin && domMin >= xMin - 2 && domMin <= xMax + 2) {
+            const yAtMin = fn(domMin);
+            if (isFinite(yAtMin) && (!hasRngMin || yAtMin >= rngMin) && (!hasRngMax || yAtMin <= rngMax)) {
+              drawEndpointMarker(ctx, toScreenX(domMin), toScreenY(yAtMin), eq.color || '#38bdf8', domMinInc, boardBg);
+            }
+          }
+          if (hasDomMax && domMax >= xMin - 2 && domMax <= xMax + 2) {
+            const yAtMax = fn(domMax);
+            if (isFinite(yAtMax) && (!hasRngMin || yAtMax >= rngMin) && (!hasRngMax || yAtMax <= rngMax)) {
+              drawEndpointMarker(ctx, toScreenX(domMax), toScreenY(yAtMax), eq.color || '#38bdf8', domMaxInc, boardBg);
+            }
+          }
         }
       });
     }
@@ -1607,14 +1718,123 @@ const GraphObject = (() => {
       }
     }
 
+    // ── Floating Domain & Range Info Overlay (Top-Right inside plot area) ──
+    const activeEqs = (g.equations && g.equations.length) 
+      ? g.equations.filter(e => e.visible !== false) 
+      : [{ id: 1, label: 'f₁(x)', expr: g.expr || 'x²', color: g.color || '#38bdf8' }];
+
+    if (activeEqs.length > 0 && plotW >= 160 && plotH >= 100) {
+      const isLightBg = isLight;
+      const padX = 12, padY = 8;
+      const lines = [];
+
+      activeEqs.forEach((eq, idx) => {
+        const { domain, range } = getEquationDomainRangeText(eq, g.xMin, g.xMax);
+        const eqColor = eq.color || LINE_COLORS[idx % LINE_COLORS.length].color;
+        const prefix = activeEqs.length > 1 ? (eq.label || `f${idx + 1}(x)`) : '';
+        lines.push({
+          prefix,
+          color: eqColor,
+          domain,
+          range
+        });
+      });
+
+      // Calculate width and height
+      ctx.font = 'bold 12px "JetBrains Mono", monospace, system-ui';
+      let maxContentW = 100;
+      lines.forEach(l => {
+        ctx.font = 'bold 11px system-ui, -apple-system, sans-serif';
+        const dLbl = l.prefix ? `${l.prefix} D: ` : 'Domain: ';
+        const rLbl = l.prefix ? `${l.prefix} R: ` : 'Range: ';
+        const dLblW = ctx.measureText(dLbl).width;
+        const rLblW = ctx.measureText(rLbl).width;
+
+        ctx.font = 'bold 12px "JetBrains Mono", monospace';
+        const dValW = ctx.measureText(l.domain).width;
+        const rValW = ctx.measureText(l.range).width;
+
+        maxContentW = Math.max(maxContentW, dLblW + dValW, rLblW + rValW);
+      });
+
+      const cardW = Math.min(Math.round(plotW * 0.48), Math.max(130, Math.round(maxContentW + padX * 2 + 12)));
+      const lineHeight = 16;
+      const cardH = Math.round(padY * 2 + lines.length * (lineHeight * 2 + 4));
+
+      const cardX = Math.round(plotX + plotW - cardW - 8);
+      const cardY = Math.round(plotY + 8);
+
+      // Glassmorphic background with subtle depth
+      ctx.save();
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
+      ctx.shadowBlur = 10;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 4;
+      ctx.fillStyle = isLightBg ? 'rgba(255, 255, 255, 0.94)' : 'rgba(11, 19, 41, 0.92)';
+      ctx.strokeStyle = isLightBg ? 'rgba(0, 0, 0, 0.16)' : 'rgba(56, 189, 248, 0.4)';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(cardX, cardY, cardW, cardH, 8);
+      else ctx.rect(cardX, cardY, cardW, cardH);
+      ctx.fill();
+      ctx.shadowColor = 'transparent';
+      ctx.stroke();
+
+      let curY = cardY + padY + 11;
+
+      lines.forEach((l) => {
+        // Curve Dot indicator
+        ctx.beginPath();
+        ctx.arc(cardX + padX + 3.5, curY - 4, 3.5, 0, Math.PI * 2);
+        ctx.fillStyle = l.color;
+        ctx.fill();
+
+        // Domain label
+        ctx.font = 'bold 11px system-ui, -apple-system, sans-serif';
+        ctx.fillStyle = l.color;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'alphabetic';
+        const dLabel = l.prefix ? `${l.prefix} D: ` : 'Domain: ';
+        const dLblW = ctx.measureText(dLabel).width;
+        ctx.fillText(dLabel, cardX + padX + 11, curY);
+
+        // Domain value
+        ctx.font = 'bold 12px "JetBrains Mono", monospace';
+        ctx.fillStyle = isLightBg ? '#0f172a' : '#f8fafc';
+        ctx.fillText(l.domain, cardX + padX + 11 + dLblW, curY);
+
+        curY += lineHeight;
+
+        // Range label
+        ctx.font = 'bold 11px system-ui, -apple-system, sans-serif';
+        ctx.fillStyle = l.color;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'alphabetic';
+        const rLabel = l.prefix ? `${l.prefix} R: ` : 'Range: ';
+        const rLblW = ctx.measureText(rLabel).width;
+        ctx.fillText(rLabel, cardX + padX + 11, curY);
+
+        // Range value
+        ctx.font = 'bold 12px "JetBrains Mono", monospace';
+        ctx.fillStyle = isLightBg ? '#0f172a' : '#f8fafc';
+        ctx.fillText(l.range, cardX + padX + 11 + rLblW, curY);
+
+        curY += lineHeight + 4;
+      });
+
+      ctx.restore();
+    }
+
     ctx.restore();
   }
 
   const BOARD_THEMES = [
     { id: 'navy', name: 'Deep Navy', color: '#0b1120', border: 'rgba(56, 189, 248, 0.4)' },
     { id: 'chalkboard', name: 'Green Board', color: '#0c2e22', border: 'rgba(34, 197, 94, 0.5)' },
-    { id: 'midnight', name: 'Charcoal', color: '#18181b', border: 'rgba(255, 255, 255, 0.25)' },
-    { id: 'whiteboard', name: 'Whiteboard', color: '#f8fafc', border: 'rgba(0, 0, 0, 0.3)' }
+    { id: 'whiteboard', name: 'Whiteboard', color: '#ffffff', border: 'rgba(0, 0, 0, 0.3)' },
+    { id: 'midnight', name: 'Slate Gray', color: '#18181b', border: 'rgba(255, 255, 255, 0.25)' },
+    { id: 'blueprint', name: 'Blueprint', color: '#0f2b48', border: 'rgba(56, 189, 248, 0.5)' },
+    { id: 'pitch', name: 'Pitch Black', color: '#000000', border: 'rgba(255, 255, 255, 0.2)' }
   ];
 
   const LINE_COLORS = [
@@ -1627,15 +1847,29 @@ const GraphObject = (() => {
     { name: 'White', color: '#ffffff' }
   ];
 
+  function hexToRgba(hex, alpha = 1) {
+    if (!hex) return `rgba(56, 189, 248, ${alpha})`;
+    if (hex.startsWith('rgba')) return hex;
+    if (hex.startsWith('rgb')) {
+      return hex.replace('rgb', 'rgba').replace(')', `, ${alpha})`);
+    }
+    let c = hex.replace('#', '');
+    if (c.length === 3) c = c.split('').map(x => x + x).join('');
+    const num = parseInt(c, 16);
+    if (isNaN(num)) return `rgba(56, 189, 248, ${alpha})`;
+    return `rgba(${(num >> 16) & 255}, ${(num >> 8) & 255}, ${num & 255}, ${alpha})`;
+  }
+
   function drawHeaderControls(ctx, g, minLeft, isLight) {
     g._headerHitboxes = [];
     const gx = g.x, gy = g.y, gw = g.w;
-    let right = gx + gw - 12;
+    let right = gx + gw - 10;
     const btnSize = 22;
 
-    // ── 1. Action Buttons on Far Right ──
+    // ── 1. Action Buttons on Far Right (Settings, Color Theme, Reset, ZoomIn, ZoomOut) ──
     const actionBtns = [
       { id: 'settings', icon: '⚙️', color: '#38bdf8', bg: 'rgba(56, 189, 248, 0.18)', border: 'rgba(56, 189, 248, 0.35)', tooltip: 'Studio Settings' },
+      { id: 'themeModal', icon: '🎨', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.18)', border: 'rgba(245, 158, 11, 0.35)', tooltip: 'Graph Color & Theme' },
       { id: 'reset', icon: '⤢', color: isLight ? '#475569' : '#cbd5e1', bg: isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.08)', border: isLight ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.15)', tooltip: 'Reset View' },
       { id: 'zoomIn', icon: '+', color: isLight ? '#475569' : '#cbd5e1', bg: isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.08)', border: isLight ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.15)', tooltip: 'Zoom In' },
       { id: 'zoomOut', icon: '−', color: isLight ? '#475569' : '#cbd5e1', bg: isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.08)', border: isLight ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.15)', tooltip: 'Zoom Out' }
@@ -1663,112 +1897,238 @@ const GraphObject = (() => {
       right -= (btnSize + 5);
     });
 
-    right -= 3;
+    const rightBoundary = right - 4;
 
-    // Divider
-    ctx.strokeStyle = isLight ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.12)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(right, gy + 8);
-    ctx.lineTo(right, gy + 30);
-    ctx.stroke();
-    right -= 8;
+    // ── 2. Middle Section: Small Equation Badges, "+ Compare", & "Domain & Range" ──
+    let curLeft = minLeft + 4;
+    const equations = (g.equations && g.equations.length) ? g.equations : [
+      { id: 1, label: 'f₁(x)', expr: g.expr || 'x²', color: g.color || '#38bdf8', visible: true }
+    ];
 
-    // ── 2. Line Color Palette (Section to choose color for lines) ──
-    const activeLineColor = (g.equations && g.equations[0] && g.equations[0].color) || g.color || '#38bdf8';
-    const showAllLines = (gw >= 620);
-    const visibleLines = showAllLines ? LINE_COLORS : LINE_COLORS.slice(0, 4);
+    // Draw Equation Badges (Small equation respective to that graph)
+    equations.forEach((eq, idx) => {
+      if (curLeft >= rightBoundary - 70) return;
+      const eqColor = eq.color || LINE_COLORS[idx % LINE_COLORS.length].color;
+      const displayFormula = formatMathDisplay(eq.expr || 'x');
+      const labelPrefix = eq.label ? `${eq.label} = ` : (idx === 0 ? 'f₁(x) = ' : `f${idx + 1}(x) = `);
 
-    for (let i = visibleLines.length - 1; i >= 0; i--) {
-      const lc = visibleLines[i];
-      const r = 7.5;
-      const cx = right - r - 2;
-      const cy = gy + 19;
-      const isCur = (lc.color.toLowerCase() === activeLineColor.toLowerCase());
+      const hasDom = (eq.domainMin !== null && eq.domainMin !== undefined && eq.domainMin !== '') || 
+                     (eq.domainMax !== null && eq.domainMax !== undefined && eq.domainMax !== '');
+      const domBracketL = eq.domainMinInc !== false ? '[' : '(';
+      const domBracketR = eq.domainMaxInc !== false ? ']' : ')';
+      const domMinStr = (eq.domainMin !== null && eq.domainMin !== undefined && eq.domainMin !== '') ? eq.domainMin : '-∞';
+      const domMaxStr = (eq.domainMax !== null && eq.domainMax !== undefined && eq.domainMax !== '') ? eq.domainMax : '∞';
+      const domText = hasDom ? ` ${domBracketL}${domMinStr}, ${domMaxStr}${domBracketR}` : '';
 
-      ctx.beginPath();
-      ctx.arc(cx, cy, r, 0, Math.PI * 2);
-      ctx.fillStyle = lc.color;
-      ctx.fill();
+      let fullText = `${labelPrefix}${displayFormula}${domText}`;
 
-      if (isCur) {
-        ctx.strokeStyle = isLight ? '#0f172a' : '#ffffff';
-        ctx.lineWidth = 2.2;
-        ctx.stroke();
+      ctx.font = 'bold 11px system-ui, -apple-system, sans-serif';
+      let textW = ctx.measureText(fullText).width;
+      const maxPillTextW = Math.min(160, Math.max(70, (rightBoundary - curLeft - 100) / Math.max(1, equations.length - idx)));
 
-        ctx.beginPath();
-        ctx.arc(cx, cy, r + 2.5, 0, Math.PI * 2);
-        ctx.strokeStyle = lc.color;
-        ctx.lineWidth = 1.2;
-        ctx.stroke();
-      } else {
-        ctx.strokeStyle = isLight ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.3)';
-        ctx.lineWidth = 1;
-        ctx.stroke();
+      let displayText = fullText;
+      if (textW > maxPillTextW) {
+        while (displayText.length > 4 && ctx.measureText(displayText + '…').width > maxPillTextW) {
+          displayText = displayText.slice(0, -1);
+        }
+        displayText += '…';
+        textW = ctx.measureText(displayText).width;
       }
 
-      g._headerHitboxes.push({ type: 'lineColor', color: lc.color, label: lc.name, x: cx - r - 2, y: cy - r - 2, w: (r + 2) * 2, h: (r + 2) * 2 });
-      right -= (r * 2 + 5);
-    }
+      const hasRemove = equations.length > 1;
+      const pillW = Math.round(textW + 20 + (hasRemove ? 16 : 0));
+      if (curLeft + pillW > rightBoundary - 40) return;
 
-    // Label: "Line:"
-    ctx.fillStyle = isLight ? '#64748b' : '#94a3b8';
-    ctx.font = '600 10px system-ui, sans-serif';
-    ctx.textAlign = 'right';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('Line:', right - 2, gy + 19);
-    right -= (ctx.measureText('Line:').width + 10);
+      const pillX = curLeft;
+      const pillY = gy + 8;
+      const pillH = 22;
 
-    // ── 3. Board Color Palette (Option to select color like a normal board) ──
-    if (right - 120 >= minLeft) {
-      // Divider
-      ctx.strokeStyle = isLight ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.12)';
+      // Pill Background
+      ctx.fillStyle = hexToRgba(eqColor, isLight ? 0.12 : 0.18);
+      ctx.strokeStyle = hexToRgba(eqColor, isLight ? 0.45 : 0.55);
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(right, gy + 8);
-      ctx.lineTo(right, gy + 30);
+      if (ctx.roundRect) ctx.roundRect(pillX, pillY, pillW, pillH, 11);
+      else ctx.rect(pillX, pillY, pillW, pillH);
+      ctx.fill();
       ctx.stroke();
-      right -= 8;
 
-      const activeBoardBg = g.bgColor || '#0b1120';
-      for (let i = BOARD_THEMES.length - 1; i >= 0; i--) {
-        const bt = BOARD_THEMES[i];
-        const r = 7.5;
-        const cx = right - r - 2;
+      // Dot in equation color
+      ctx.beginPath();
+      ctx.arc(pillX + 9, pillY + pillH / 2, 3.8, 0, Math.PI * 2);
+      ctx.fillStyle = eqColor;
+      ctx.fill();
+
+      // Equation text
+      ctx.fillStyle = isLight ? '#0f172a' : '#ffffff';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(displayText, pillX + 17, pillY + pillH / 2);
+
+      // Hitbox for clicking equation to edit
+      g._headerHitboxes.push({
+        type: 'equation',
+        eqIndex: idx,
+        eqId: eq.id,
+        x: pillX,
+        y: pillY,
+        w: hasRemove ? pillW - 16 : pillW,
+        h: pillH
+      });
+
+      // Small ✕ close button if multi-curve
+      if (hasRemove) {
+        const closeX = pillX + pillW - 14;
+        ctx.fillStyle = isLight ? '#64748b' : '#94a3b8';
+        ctx.font = 'bold 10px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('✕', closeX, pillY + pillH / 2);
+
+        g._headerHitboxes.push({
+          type: 'removeEq',
+          eqIndex: idx,
+          x: pillX + pillW - 18,
+          y: pillY,
+          w: 18,
+          h: pillH
+        });
+      }
+
+      curLeft += pillW + 6;
+    });
+
+    // ── Button: "+ Compare" (Add comparison equation in same graph) ──
+    if (curLeft + 76 <= rightBoundary) {
+      const cmpW = 74;
+      const cmpH = 22;
+      const cmpX = curLeft;
+      const cmpY = gy + 8;
+
+      ctx.fillStyle = isLight ? 'rgba(34, 197, 94, 0.12)' : 'rgba(34, 197, 94, 0.18)';
+      ctx.strokeStyle = isLight ? 'rgba(34, 197, 94, 0.45)' : 'rgba(34, 197, 94, 0.55)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(cmpX, cmpY, cmpW, cmpH, 11);
+      else ctx.rect(cmpX, cmpY, cmpW, cmpH);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = isLight ? '#15803d' : '#4ade80';
+      ctx.font = 'bold 11px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('＋ Compare', cmpX + cmpW / 2, cmpY + cmpH / 2);
+
+      g._headerHitboxes.push({ type: 'addCompare', x: cmpX, y: cmpY, w: cmpW, h: cmpH });
+      curLeft += cmpW + 6;
+    }
+
+    // ── Button: "Function Domain & Range" (Func D & R) ──
+    if (curLeft + 80 <= rightBoundary) {
+      ctx.font = 'bold 11px system-ui, sans-serif';
+      const drText = '🌐 Func D & R';
+      const drW = Math.round(ctx.measureText(drText).width + 16);
+
+      if (curLeft + drW <= rightBoundary) {
+        const drX = curLeft;
+        const drY = gy + 8;
+        const drH = 22;
+
+        ctx.fillStyle = isLight ? 'rgba(56, 189, 248, 0.12)' : 'rgba(56, 189, 248, 0.16)';
+        ctx.strokeStyle = isLight ? 'rgba(56, 189, 248, 0.4)' : 'rgba(56, 189, 248, 0.45)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(drX, drY, drW, drH, 11);
+        else ctx.rect(drX, drY, drW, drH);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = isLight ? '#0284c7' : '#38bdf8';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(drText, drX + drW / 2, drY + drH / 2);
+
+        g._headerHitboxes.push({ type: 'domainRange', x: drX, y: drY, w: drW, h: drH });
+        curLeft += drW + 6;
+      }
+    }
+
+    // ── 3. Graph Background / Board Theme & Curve Line Color Palettes ──
+    const availSwatchW = rightBoundary - curLeft;
+    if (availSwatchW >= 80) {
+      let swatchRight = rightBoundary;
+
+      // A. Curve Line Colors (Circles)
+      const activeLineColor = (equations[0] && equations[0].color) || g.color || '#38bdf8';
+      const numLines = (availSwatchW >= 220) ? 4 : (availSwatchW >= 140 ? 3 : 2);
+      const visibleLines = LINE_COLORS.slice(0, numLines);
+
+      for (let i = visibleLines.length - 1; i >= 0; i--) {
+        const lc = visibleLines[i];
+        const r = 7;
+        const cx = swatchRight - r - 2;
         const cy = gy + 19;
-        const isCur = (bt.color.toLowerCase() === activeBoardBg.toLowerCase());
+        const isCur = (lc.color.toLowerCase() === activeLineColor.toLowerCase());
 
         ctx.beginPath();
         ctx.arc(cx, cy, r, 0, Math.PI * 2);
-        ctx.fillStyle = bt.color;
+        ctx.fillStyle = lc.color;
         ctx.fill();
 
         if (isCur) {
-          ctx.strokeStyle = '#38bdf8';
-          ctx.lineWidth = 2.2;
-          ctx.stroke();
-
-          ctx.beginPath();
-          ctx.arc(cx, cy, r + 2.5, 0, Math.PI * 2);
-          ctx.strokeStyle = isLight ? '#0284c7' : '#ffffff';
-          ctx.lineWidth = 1.2;
+          ctx.strokeStyle = isLight ? '#0f172a' : '#ffffff';
+          ctx.lineWidth = 2;
           ctx.stroke();
         } else {
-          ctx.strokeStyle = isLight ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.35)';
+          ctx.strokeStyle = isLight ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.3)';
           ctx.lineWidth = 1;
           ctx.stroke();
         }
 
-        g._headerHitboxes.push({ type: 'boardColor', color: bt.color, label: bt.name, x: cx - r - 2, y: cy - r - 2, w: (r + 2) * 2, h: (r + 2) * 2 });
-        right -= (r * 2 + 5);
+        g._headerHitboxes.push({ type: 'lineColor', color: lc.color, label: lc.name, x: cx - r - 2, y: cy - r - 2, w: (r + 2) * 2, h: (r + 2) * 2 });
+        swatchRight -= (r * 2 + 5);
       }
 
-      // Label: "Board:"
-      ctx.fillStyle = isLight ? '#64748b' : '#94a3b8';
-      ctx.font = '600 10px system-ui, sans-serif';
-      ctx.textAlign = 'right';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('Board:', right - 2, gy + 19);
+      // Vertical Divider between line colors and board theme colors
+      ctx.strokeStyle = isLight ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.15)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(swatchRight - 2, gy + 9);
+      ctx.lineTo(swatchRight - 2, gy + 29);
+      ctx.stroke();
+      swatchRight -= 8;
+
+      // B. Graph Background / Board Theme Swatches (Rounded Squares)
+      const activeBoardBg = (g.bgColor || '#0b1120').toLowerCase();
+      const numThemes = (availSwatchW >= 220) ? 4 : (availSwatchW >= 140 ? 3 : 2);
+      const visibleThemes = BOARD_THEMES.slice(0, numThemes);
+
+      for (let i = visibleThemes.length - 1; i >= 0; i--) {
+        const bt = visibleThemes[i];
+        const sz = 16;
+        const bx = swatchRight - sz - 1;
+        const by = gy + 11;
+        const isCur = (bt.color.toLowerCase() === activeBoardBg);
+
+        ctx.fillStyle = bt.color;
+        ctx.strokeStyle = isCur ? (isLight ? '#0284c7' : '#38bdf8') : (isLight ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.3)');
+        ctx.lineWidth = isCur ? 2 : 1;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(bx, by, sz, sz, 4);
+        else ctx.rect(bx, by, sz, sz);
+        ctx.fill();
+        ctx.stroke();
+
+        if (isCur) {
+          ctx.fillStyle = (bt.color === '#ffffff' || bt.color === '#f8fafc') ? '#0f172a' : '#ffffff';
+          ctx.beginPath();
+          ctx.arc(bx + sz / 2, by + sz / 2, 2.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        g._headerHitboxes.push({ type: 'boardColor', color: bt.color, label: bt.name, x: bx, y: by, w: sz, h: sz });
+        swatchRight -= (sz + 5);
+      }
     }
   }
 
@@ -1874,9 +2234,29 @@ const GraphObject = (() => {
         if (bx >= h.x && bx <= h.x + h.w && by >= h.y && by <= h.y + h.h) {
           if (h.type === 'action') {
             if (h.action === 'settings') openEditor(g);
+            else if (h.action === 'themeModal') openColorThemeModal(g);
             else if (h.action === 'reset') resetView(g);
             else if (h.action === 'zoomIn') zoom(g, 0.8);
             else if (h.action === 'zoomOut') zoom(g, 1.25);
+            return true;
+          } else if (h.type === 'equation') {
+            openQuickEditEquation(g, h.eqIndex);
+            return true;
+          } else if (h.type === 'removeEq') {
+            if (g.equations && g.equations.length > 1) {
+              const removed = g.equations.splice(h.eqIndex, 1);
+              if (typeof Canvas !== 'undefined' && Canvas.renderShapes) Canvas.renderShapes();
+              if (typeof Canvas !== 'undefined' && Canvas.saveHistory) Canvas.saveHistory();
+              if (typeof App !== 'undefined' && App.showToast) {
+                App.showToast(`Removed comparison curve ${removed[0]?.label || ''}`);
+              }
+            }
+            return true;
+          } else if (h.type === 'addCompare') {
+            openQuickAddEquation(g);
+            return true;
+          } else if (h.type === 'domainRange') {
+            openDomainRangeModal(g);
             return true;
           } else if (h.type === 'lineColor') {
             if (g.equations && g.equations.length) {
@@ -2011,6 +2391,648 @@ const GraphObject = (() => {
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
+  // 7b. INTERACTIVE MODALS: QUICK COMPARE, QUICK EDIT & DOMAIN/RANGE
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  let modalTargetGraph = null;
+
+  function calculateAutoFitRange(g, xMin, xMax) {
+    let minVal = Infinity, maxVal = -Infinity;
+    const equations = (g.equations && g.equations.length) ? g.equations : [{ expr: g.expr || 'x', visible: true }];
+    const samples = 160;
+    const dx = (xMax - xMin) / samples;
+
+    equations.forEach(eq => {
+      if (!eq.visible || !eq.expr) return;
+      const fn = compile(eq.expr);
+      for (let i = 0; i <= samples; i++) {
+        const x = xMin + i * dx;
+        const y = fn(x);
+        if (typeof y === 'number' && isFinite(y) && !isNaN(y)) {
+          if (y < minVal) minVal = y;
+          if (y > maxVal) maxVal = y;
+        }
+      }
+    });
+
+    if (!isFinite(minVal) || !isFinite(maxVal) || minVal === maxVal) {
+      return { yMin: -10, yMax: 10 };
+    }
+    const pad = Math.max(1, (maxVal - minVal) * 0.15);
+    return {
+      yMin: Math.floor((minVal - pad) * 10) / 10,
+      yMax: Math.ceil((maxVal + pad) * 10) / 10
+    };
+  }
+
+  function openQuickAddEquation(g) {
+    if (!g) return;
+    closeQuickCompareModal();
+    closeDomainRangeModal();
+    modalTargetGraph = g;
+
+    const usedColors = (g.equations || []).map(e => (e.color || '').toLowerCase());
+    const nextColObj = LINE_COLORS.find(c => !usedColors.includes(c.color.toLowerCase())) || LINE_COLORS[(g.equations || []).length % LINE_COLORS.length];
+    let selectedColor = nextColObj.color;
+    const nextIndex = (g.equations || []).length + 1;
+    const nextSub = nextIndex === 1 ? '₁' : (nextIndex === 2 ? '₂' : (nextIndex === 3 ? '₃' : (nextIndex === 4 ? '₄' : String(nextIndex))));
+
+    const modal = document.createElement('div');
+    modal.id = 'gos-quick-compare-modal';
+    modal.className = 'board-bg-modal open';
+    modal.innerHTML = `
+      <div class="bbm-overlay" onclick="GraphObject.closeQuickCompareModal()"></div>
+      <div class="bbm-content" style="max-width:580px;padding:26px;border-radius:18px;background:rgba(11,19,41,0.95);box-shadow:0 24px 60px rgba(0,0,0,0.7);backdrop-filter:blur(18px);border:1px solid rgba(56,189,248,0.25);">
+        <div class="bbm-header" style="margin-bottom:18px;display:flex;justify-content:space-between;align-items:center;">
+          <div class="bbm-title-wrap" style="display:flex;gap:12px;align-items:center;">
+            <span style="font-size:26px;">📊</span>
+            <div>
+              <div class="bbm-title" style="font-size:18px;color:#f8fafc;font-weight:700;">Add Comparison Function: f${nextSub}(x)</div>
+              <div class="bbm-subtitle" style="font-size:12.5px;color:#94a3b8;margin-top:2px;">Plot multiple curves on the same grid in distinct colors to compare behaviors &amp; intersections.</div>
+            </div>
+          </div>
+          <button class="bbm-close" onclick="GraphObject.closeQuickCompareModal()" style="background:rgba(255,255,255,0.08);border:none;color:#cbd5e1;font-size:18px;width:32px;height:32px;border-radius:50%;cursor:pointer;">✕</button>
+        </div>
+
+        <div style="margin-bottom:16px;">
+          <label style="font-size:13px;font-weight:700;color:#cbd5e1;display:block;margin-bottom:8px;">Enter Mathematical Formula:</label>
+          <div style="display:flex;gap:10px;align-items:center;">
+            <span style="font-family:var(--mono);font-size:16px;font-weight:700;color:${selectedColor};" id="gos-qc-prefix">f${nextSub}(x) =</span>
+            <input type="text" id="gos-qc-input" class="gos-input" value="2x - 1" style="flex:1;height:46px;font-size:16px;font-weight:700;color:#f8fafc;background:rgba(255,255,255,0.06);border:1.5px solid rgba(56,189,248,0.4);border-radius:10px;padding:0 14px;" placeholder="e.g. 2x, cos(x), -x^2, 1/x, e^x">
+          </div>
+        </div>
+
+        <!-- Quick Comparison Presets -->
+        <div style="margin-bottom:16px;">
+          <label style="font-size:12px;font-weight:600;color:#94a3b8;display:block;margin-bottom:8px;">Quick Presets to Compare:</label>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;">
+            <button type="button" class="gos-preset-chip" style="cursor:pointer;padding:6px 12px;border-radius:8px;background:rgba(255,255,255,0.05);color:#f8fafc;border:1px solid rgba(255,255,255,0.12);" onclick="document.getElementById('gos-qc-input').value='2x - 1'; document.getElementById('gos-qc-input').focus();">Linear (2x - 1)</button>
+            <button type="button" class="gos-preset-chip" style="cursor:pointer;padding:6px 12px;border-radius:8px;background:rgba(255,255,255,0.05);color:#f8fafc;border:1px solid rgba(255,255,255,0.12);" onclick="document.getElementById('gos-qc-input').value='cos(x)'; document.getElementById('gos-qc-input').focus();">Cosine (cos(x))</button>
+            <button type="button" class="gos-preset-chip" style="cursor:pointer;padding:6px 12px;border-radius:8px;background:rgba(255,255,255,0.05);color:#f8fafc;border:1px solid rgba(255,255,255,0.12);" onclick="document.getElementById('gos-qc-input').value='-x²'; document.getElementById('gos-qc-input').focus();">Inverted Parabola (-x²)</button>
+            <button type="button" class="gos-preset-chip" style="cursor:pointer;padding:6px 12px;border-radius:8px;background:rgba(255,255,255,0.05);color:#f8fafc;border:1px solid rgba(255,255,255,0.12);" onclick="document.getElementById('gos-qc-input').value='1/x'; document.getElementById('gos-qc-input').focus();">Rational (1/x)</button>
+            <button type="button" class="gos-preset-chip" style="cursor:pointer;padding:6px 12px;border-radius:8px;background:rgba(255,255,255,0.05);color:#f8fafc;border:1px solid rgba(255,255,255,0.12);" onclick="document.getElementById('gos-qc-input').value='e^x'; document.getElementById('gos-qc-input').focus();">Exponential (eˣ)</button>
+            <button type="button" class="gos-preset-chip" style="cursor:pointer;padding:6px 12px;border-radius:8px;background:rgba(255,255,255,0.05);color:#f8fafc;border:1px solid rgba(255,255,255,0.12);" onclick="document.getElementById('gos-qc-input').value='|x|'; document.getElementById('gos-qc-input').focus();">Modulus (|x|)</button>
+          </div>
+        </div>
+
+        <!-- Color Selection -->
+        <div style="margin-bottom:20px;">
+          <label style="font-size:12px;font-weight:600;color:#94a3b8;display:block;margin-bottom:8px;">Curve Color:</label>
+          <div style="display:flex;gap:12px;align-items:center;">
+            ${LINE_COLORS.map(c => `
+              <button type="button" class="gos-theme-swatch ${c.color.toLowerCase() === selectedColor.toLowerCase() ? 'active' : ''}" 
+                style="width:30px;height:30px;border-radius:50%;background:${c.color};border:2px solid ${c.color.toLowerCase() === selectedColor.toLowerCase() ? '#ffffff' : 'transparent'};cursor:pointer;transition:transform 0.15s ease;"
+                title="${c.name}"
+                onclick="
+                  selectedColor = '${c.color}';
+                  document.querySelectorAll('#gos-quick-compare-modal .gos-theme-swatch').forEach(s => { s.classList.remove('active'); s.style.borderColor = 'transparent'; });
+                  this.classList.add('active');
+                  this.style.borderColor = '#ffffff';
+                  document.getElementById('gos-qc-prefix').style.color = '${c.color}';
+                ">
+              </button>
+            `).join('')}
+          </div>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid rgba(255,255,255,0.1);padding-top:18px;">
+          <button type="button" class="gos-btn gos-btn-secondary" onclick="GraphObject.closeQuickCompareModal(); GraphObject.openEditor(modalTargetGraph || g); GraphObject.switchStudioTab('functions');" style="padding:10px 16px;font-size:13.5px;cursor:pointer;border-radius:10px;">
+            ⚙️ Open Full Studio
+          </button>
+          <div style="display:flex;gap:10px;">
+            <button type="button" class="gos-btn gos-btn-secondary" onclick="GraphObject.closeQuickCompareModal()" style="padding:10px 18px;font-size:13.5px;cursor:pointer;border-radius:10px;">Cancel</button>
+            <button type="button" class="gos-btn gos-btn-primary" style="background:#22c55e;color:#052e16;font-weight:700;padding:10px 20px;font-size:14px;cursor:pointer;border-radius:10px;border:none;" id="gos-qc-submit-btn">
+              ＋ Plot Comparison Curve
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    const input = modal.querySelector('#gos-qc-input');
+    if (input) {
+      input.focus();
+      input.select();
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') modal.querySelector('#gos-qc-submit-btn').click();
+        if (e.key === 'Escape') closeQuickCompareModal();
+      });
+    }
+
+    modal.querySelector('#gos-qc-submit-btn').addEventListener('click', () => {
+      const exprVal = input ? input.value.trim() : '';
+      if (!exprVal) return;
+      if (!g.equations) g.equations = [];
+
+      g.equations.push({
+        id: Date.now(),
+        label: `f${nextSub}(x)`,
+        expr: exprVal,
+        color: selectedColor,
+        lineWidth: 2.8,
+        visible: true
+      });
+
+      if (typeof Canvas !== 'undefined' && Canvas.renderShapes) Canvas.renderShapes();
+      if (typeof Canvas !== 'undefined' && Canvas.saveHistory) Canvas.saveHistory();
+
+      if (typeof App !== 'undefined' && App.showToast) {
+        App.showToast(`✓ Added comparison curve f${nextSub}(x) = ${exprVal}`);
+      }
+      closeQuickCompareModal();
+    });
+  }
+
+  function closeQuickCompareModal() {
+    const modal = document.getElementById('gos-quick-compare-modal');
+    if (modal) modal.remove();
+  }
+
+  function openQuickEditEquation(g, eqIndex) {
+    if (!g || !g.equations || !g.equations[eqIndex]) return;
+    const eq = g.equations[eqIndex];
+    closeQuickCompareModal();
+    closeDomainRangeModal();
+    modalTargetGraph = g;
+
+    let selectedColor = eq.color || '#38bdf8';
+
+    const modal = document.createElement('div');
+    modal.id = 'gos-quick-edit-modal';
+    modal.className = 'board-bg-modal open';
+    modal.innerHTML = `
+      <div class="bbm-overlay" onclick="document.getElementById('gos-quick-edit-modal')?.remove()"></div>
+      <div class="bbm-content" style="max-width:560px;padding:26px;border-radius:18px;background:rgba(11,19,41,0.96);box-shadow:0 24px 60px rgba(0,0,0,0.7);backdrop-filter:blur(18px);border:1px solid rgba(56,189,248,0.25);">
+        <div class="bbm-header" style="margin-bottom:18px;display:flex;justify-content:space-between;align-items:center;">
+          <div class="bbm-title-wrap" style="display:flex;gap:12px;align-items:center;">
+            <span style="font-size:24px;">✏️</span>
+            <div>
+              <div class="bbm-title" style="font-size:18px;color:#f8fafc;font-weight:700;">Edit Function: ${eq.label || 'f(x)'}</div>
+              <div class="bbm-subtitle" style="font-size:12.5px;color:#94a3b8;margin-top:2px;">Update mathematical formula, domain bounds, and curve color.</div>
+            </div>
+          </div>
+          <button class="bbm-close" onclick="document.getElementById('gos-quick-edit-modal')?.remove()" style="background:rgba(255,255,255,0.08);border:none;color:#cbd5e1;font-size:18px;width:32px;height:32px;border-radius:50%;cursor:pointer;">✕</button>
+        </div>
+
+        <div style="margin-bottom:14px;">
+          <label style="font-size:13px;font-weight:700;color:#cbd5e1;display:block;margin-bottom:8px;">Equation Formula:</label>
+          <div style="display:flex;gap:10px;align-items:center;">
+            <span style="font-family:var(--mono);font-size:16px;font-weight:700;color:${selectedColor};" id="gos-qe-prefix">${eq.label || 'y'} =</span>
+            <input type="text" id="gos-qe-input" class="gos-input" value="${eq.expr}" style="flex:1;height:44px;font-size:15px;font-weight:700;color:#f8fafc;background:rgba(255,255,255,0.06);border:1.5px solid rgba(56,189,248,0.4);border-radius:10px;padding:0 14px;" placeholder="e.g. sin(x), x^2 - 4">
+          </div>
+        </div>
+
+        <!-- Editable Function Domain -->
+        <div class="gos-param-card" style="box-sizing:border-box;width:100%;margin-bottom:14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:12px 14px;overflow:hidden;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <strong style="color:#f8fafc;font-size:13px;">Function Domain (x ∈ [min, max]):</strong>
+            <span style="font-size:11.5px;color:#94a3b8;">Restricts where function is evaluated</span>
+          </div>
+          <div class="gos-dr-grid" style="display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:10px;margin-bottom:8px;width:100%;box-sizing:border-box;">
+            <div class="gos-dr-grid-col" style="min-width:0;box-sizing:border-box;">
+              <div class="gos-dr-input-row" style="display:flex;align-items:center;gap:6px;width:100%;min-width:0;box-sizing:border-box;">
+                <button type="button" id="gos-qe-dmin-inc" class="gos-dr-inc-btn" onclick="this.textContent = this.textContent === '[' ? '(' : '['" style="flex-shrink:0;height:36px;width:32px;font-size:16px;font-weight:700;background:rgba(255,255,255,0.08);color:#38bdf8;border:1px solid rgba(56,189,248,0.3);border-radius:6px;cursor:pointer;box-sizing:border-box;display:flex;align-items:center;justify-content:center;">${eq.domainMinInc !== false ? '[' : '('}</button>
+                <input type="number" step="0.5" id="gos-qe-dmin" class="gos-input" value="${eq.domainMin !== null && eq.domainMin !== undefined ? eq.domainMin : ''}" placeholder="-∞ (no min)" style="flex:1 1 0;min-width:0;width:0;height:36px;font-size:13.5px;color:#f8fafc;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:0 8px;box-sizing:border-box;">
+              </div>
+            </div>
+            <div class="gos-dr-grid-col" style="min-width:0;box-sizing:border-box;">
+              <div class="gos-dr-input-row" style="display:flex;align-items:center;gap:6px;width:100%;min-width:0;box-sizing:border-box;">
+                <input type="number" step="0.5" id="gos-qe-dmax" class="gos-input" value="${eq.domainMax !== null && eq.domainMax !== undefined ? eq.domainMax : ''}" placeholder="+∞ (no max)" style="flex:1 1 0;min-width:0;width:0;height:36px;font-size:13.5px;color:#f8fafc;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:0 8px;box-sizing:border-box;">
+                <button type="button" id="gos-qe-dmax-inc" class="gos-dr-inc-btn" onclick="this.textContent = this.textContent === ']' ? ')' : ']'" style="flex-shrink:0;height:36px;width:32px;font-size:16px;font-weight:700;background:rgba(255,255,255,0.08);color:#38bdf8;border:1px solid rgba(56,189,248,0.3);border-radius:6px;cursor:pointer;box-sizing:border-box;display:flex;align-items:center;justify-content:center;">${eq.domainMaxInc !== false ? ']' : ')'}</button>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:5px;">
+            <button type="button" class="gos-preset-chip" style="font-size:11.5px;padding:3px 8px;border-radius:5px;background:rgba(255,255,255,0.06);color:#f8fafc;border:1px solid rgba(255,255,255,0.1);cursor:pointer;" onclick="document.getElementById('gos-qe-dmin').value='';document.getElementById('gos-qe-dmax').value='';">ℝ (All Reals)</button>
+            <button type="button" class="gos-preset-chip" style="font-size:11.5px;padding:3px 8px;border-radius:5px;background:rgba(255,255,255,0.06);color:#f8fafc;border:1px solid rgba(255,255,255,0.1);cursor:pointer;" onclick="document.getElementById('gos-qe-dmin').value='0';document.getElementById('gos-qe-dmax').value='';">x ≥ 0</button>
+            <button type="button" class="gos-preset-chip" style="font-size:11.5px;padding:3px 8px;border-radius:5px;background:rgba(255,255,255,0.06);color:#f8fafc;border:1px solid rgba(255,255,255,0.1);cursor:pointer;" onclick="document.getElementById('gos-qe-dmin').value='-2';document.getElementById('gos-qe-dmax').value='3';">[-2, 3]</button>
+            <button type="button" class="gos-preset-chip" style="font-size:11.5px;padding:3px 8px;border-radius:5px;background:rgba(255,255,255,0.06);color:#f8fafc;border:1px solid rgba(255,255,255,0.1);cursor:pointer;" onclick="document.getElementById('gos-qe-dmin').value='-5';document.getElementById('gos-qe-dmax').value='5';">[-5, 5]</button>
+          </div>
+        </div>
+
+        <!-- Editable Function Range -->
+        <div class="gos-param-card" style="box-sizing:border-box;width:100%;margin-bottom:14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:12px 14px;overflow:hidden;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <strong style="color:#f8fafc;font-size:13px;">Function Range (y ∈ [min, max]):</strong>
+            <span style="font-size:11.5px;color:#94a3b8;">Restricts vertical curve values</span>
+          </div>
+          <div class="gos-dr-grid" style="display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:10px;margin-bottom:8px;width:100%;box-sizing:border-box;">
+            <div class="gos-dr-grid-col" style="min-width:0;box-sizing:border-box;">
+              <div class="gos-dr-input-row" style="display:flex;align-items:center;gap:6px;width:100%;min-width:0;box-sizing:border-box;">
+                <button type="button" id="gos-qe-rmin-inc" class="gos-dr-inc-btn" onclick="this.textContent = this.textContent === '[' ? '(' : '['" style="flex-shrink:0;height:36px;width:32px;font-size:16px;font-weight:700;background:rgba(255,255,255,0.08);color:#38bdf8;border:1px solid rgba(56,189,248,0.3);border-radius:6px;cursor:pointer;box-sizing:border-box;display:flex;align-items:center;justify-content:center;">${eq.rangeMinInc !== false ? '[' : '('}</button>
+                <input type="number" step="0.5" id="gos-qe-rmin" class="gos-input" value="${eq.rangeMin !== null && eq.rangeMin !== undefined ? eq.rangeMin : ''}" placeholder="-∞ (no min)" style="flex:1 1 0;min-width:0;width:0;height:36px;font-size:13.5px;color:#f8fafc;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:0 8px;box-sizing:border-box;">
+              </div>
+            </div>
+            <div class="gos-dr-grid-col" style="min-width:0;box-sizing:border-box;">
+              <div class="gos-dr-input-row" style="display:flex;align-items:center;gap:6px;width:100%;min-width:0;box-sizing:border-box;">
+                <input type="number" step="0.5" id="gos-qe-rmax" class="gos-input" value="${eq.rangeMax !== null && eq.rangeMax !== undefined ? eq.rangeMax : ''}" placeholder="+∞ (no max)" style="flex:1 1 0;min-width:0;width:0;height:36px;font-size:13.5px;color:#f8fafc;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:0 8px;box-sizing:border-box;">
+                <button type="button" id="gos-qe-rmax-inc" class="gos-dr-inc-btn" onclick="this.textContent = this.textContent === ']' ? ')' : ']'" style="flex-shrink:0;height:36px;width:32px;font-size:16px;font-weight:700;background:rgba(255,255,255,0.08);color:#38bdf8;border:1px solid rgba(56,189,248,0.3);border-radius:6px;cursor:pointer;box-sizing:border-box;display:flex;align-items:center;justify-content:center;">${eq.rangeMaxInc !== false ? ']' : ')'}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Color Selection -->
+        <div style="margin-bottom:18px;">
+          <label style="font-size:12px;font-weight:600;color:#94a3b8;display:block;margin-bottom:8px;">Curve Color:</label>
+          <div style="display:flex;gap:12px;align-items:center;">
+            ${LINE_COLORS.map(c => `
+              <button type="button" class="gos-theme-swatch ${c.color.toLowerCase() === selectedColor.toLowerCase() ? 'active' : ''}" 
+                style="width:30px;height:30px;border-radius:50%;background:${c.color};border:2px solid ${c.color.toLowerCase() === selectedColor.toLowerCase() ? '#ffffff' : 'transparent'};cursor:pointer;transition:transform 0.15s ease;"
+                title="${c.name}"
+                onclick="
+                  selectedColor = '${c.color}';
+                  document.querySelectorAll('#gos-quick-edit-modal .gos-theme-swatch').forEach(s => { s.classList.remove('active'); s.style.borderColor = 'transparent'; });
+                  this.classList.add('active');
+                  this.style.borderColor = '#ffffff';
+                  document.getElementById('gos-qe-prefix').style.color = '${c.color}';
+                ">
+              </button>
+            `).join('')}
+          </div>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid rgba(255,255,255,0.1);padding-top:16px;">
+          ${g.equations.length > 1 ? `
+            <button type="button" class="gos-btn gos-btn-secondary" style="color:#f43f5e;border-color:rgba(244,63,94,0.3);padding:10px 16px;font-size:13.5px;cursor:pointer;border-radius:10px;" id="gos-qe-delete-btn">
+              🗑️ Delete Curve
+            </button>
+          ` : `<span></span>`}
+          <div style="display:flex;gap:10px;">
+            <button type="button" class="gos-btn gos-btn-secondary" onclick="document.getElementById('gos-quick-edit-modal')?.remove()" style="padding:10px 18px;font-size:13.5px;cursor:pointer;border-radius:10px;">Cancel</button>
+            <button type="button" class="gos-btn gos-btn-primary" id="gos-qe-save-btn" style="background:#38bdf8;color:#0b1329;font-weight:700;padding:10px 20px;font-size:14px;cursor:pointer;border-radius:10px;border:none;">
+              ✓ Save Curve
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    const input = modal.querySelector('#gos-qe-input');
+    if (input) {
+      input.focus();
+      input.select();
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') modal.querySelector('#gos-qe-save-btn').click();
+        if (e.key === 'Escape') modal.remove();
+      });
+    }
+
+    modal.querySelector('#gos-qe-save-btn').addEventListener('click', () => {
+      const val = input ? input.value.trim() : '';
+      if (!val) return;
+      eq.expr = val;
+      eq.color = selectedColor;
+
+      // Save domain restrictions
+      const dminVal = modal.querySelector('#gos-qe-dmin')?.value.trim();
+      const dmaxVal = modal.querySelector('#gos-qe-dmax')?.value.trim();
+      eq.domainMin = (dminVal !== '' && !isNaN(parseFloat(dminVal))) ? parseFloat(dminVal) : null;
+      eq.domainMax = (dmaxVal !== '' && !isNaN(parseFloat(dmaxVal))) ? parseFloat(dmaxVal) : null;
+      eq.domainMinInc = (modal.querySelector('#gos-qe-dmin-inc')?.textContent === '[');
+      eq.domainMaxInc = (modal.querySelector('#gos-qe-dmax-inc')?.textContent === ']');
+
+      // Save range restrictions
+      const rminVal = modal.querySelector('#gos-qe-rmin')?.value.trim();
+      const rmaxVal = modal.querySelector('#gos-qe-rmax')?.value.trim();
+      eq.rangeMin = (rminVal !== '' && !isNaN(parseFloat(rminVal))) ? parseFloat(rminVal) : null;
+      eq.rangeMax = (rmaxVal !== '' && !isNaN(parseFloat(rmaxVal))) ? parseFloat(rmaxVal) : null;
+      eq.rangeMinInc = (modal.querySelector('#gos-qe-rmin-inc')?.textContent === '[');
+      eq.rangeMaxInc = (modal.querySelector('#gos-qe-rmax-inc')?.textContent === ']');
+
+      if (typeof Canvas !== 'undefined' && Canvas.renderShapes) Canvas.renderShapes();
+      if (typeof Canvas !== 'undefined' && Canvas.saveHistory) Canvas.saveHistory();
+      if (typeof App !== 'undefined' && App.showToast) App.showToast(`✓ Updated ${eq.label}`);
+      modal.remove();
+    });
+
+    const deleteBtn = modal.querySelector('#gos-qe-delete-btn');
+    if (deleteBtn) {
+      deleteBtn.addEventListener('click', () => {
+        g.equations.splice(eqIndex, 1);
+        if (typeof Canvas !== 'undefined' && Canvas.renderShapes) Canvas.renderShapes();
+        if (typeof Canvas !== 'undefined' && Canvas.saveHistory) Canvas.saveHistory();
+        if (typeof App !== 'undefined' && App.showToast) App.showToast(`Removed curve`);
+        modal.remove();
+      });
+    }
+  }
+
+  let activeDomainRangeEqIdx = 0;
+
+  function openDomainRangeModal(g) {
+    if (!g) return;
+    closeDomainRangeModal();
+    closeQuickCompareModal();
+    modalTargetGraph = g;
+
+    const equations = (g.equations && g.equations.length) ? g.equations : [
+      { id: 1, label: 'f₁(x)', expr: g.expr || 'x²', color: g.color || '#38bdf8', visible: true }
+    ];
+    activeDomainRangeEqIdx = Math.min(activeDomainRangeEqIdx, equations.length - 1);
+    const targetEq = equations[activeDomainRangeEqIdx];
+
+    const modal = document.createElement('div');
+    modal.id = 'gos-domain-range-modal';
+    modal.className = 'board-bg-modal open';
+    modal.innerHTML = `
+      <div class="bbm-overlay" onclick="GraphObject.closeDomainRangeModal()"></div>
+      <div class="bbm-content" style="box-sizing:border-box;width:min(620px,94vw);max-width:620px;padding:26px;border-radius:18px;background:rgba(11,19,41,0.96);box-shadow:0 24px 60px rgba(0,0,0,0.7);backdrop-filter:blur(18px);border:1px solid rgba(56,189,248,0.25);overflow-x:hidden;">
+        <div class="bbm-header" style="margin-bottom:18px;display:flex;justify-content:space-between;align-items:center;">
+          <div class="bbm-title-wrap" style="display:flex;gap:12px;align-items:center;">
+            <span style="font-size:26px;">🌐</span>
+            <div>
+              <div class="bbm-title" style="font-size:18px;color:#f8fafc;font-weight:700;">Function Domain &amp; Range Restrictions</div>
+              <div class="bbm-subtitle" style="font-size:12.5px;color:#94a3b8;margin-top:2px;">Set editable domain [xMin, xMax] and range restrictions for active curves.</div>
+            </div>
+          </div>
+          <button class="bbm-close" onclick="GraphObject.closeDomainRangeModal()" style="background:rgba(255,255,255,0.08);border:none;color:#cbd5e1;font-size:18px;width:32px;height:32px;border-radius:50%;cursor:pointer;">✕</button>
+        </div>
+
+        <!-- Target Function Selection -->
+        <div style="margin-bottom:14px;background:rgba(56,189,248,0.08);border:1px solid rgba(56,189,248,0.25);border-radius:12px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;box-sizing:border-box;width:100%;">
+          <span style="font-size:13.5px;font-weight:700;color:#38bdf8;">Select Function to Restrict:</span>
+          <select id="gos-fdr-target-select" class="gos-input" style="font-size:13px;font-weight:700;color:#ffffff;background:rgba(15,23,42,0.9);border:1px solid rgba(56,189,248,0.4);border-radius:8px;padding:6px 12px;cursor:pointer;" onchange="GraphObject.onDomainRangeTargetChange(parseInt(this.value))">
+            ${equations.map((eq, i) => `
+              <option value="${i}" ${i === activeDomainRangeEqIdx ? 'selected' : ''}>${eq.label || `f${i+1}(x)`}: y = ${eq.expr}</option>
+            `).join('')}
+          </select>
+        </div>
+
+        <!-- Function Domain Restriction Card -->
+        <div class="gos-param-card" style="box-sizing:border-box;width:100%;margin-bottom:14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px 18px;overflow:hidden;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <strong style="color:#f8fafc;font-size:14.5px;">Function Domain Restriction (x ∈ [min, max]):</strong>
+            <span style="font-size:12px;color:#94a3b8;">Restricts curve domain &amp; draws boundary dots</span>
+          </div>
+          <div class="gos-dr-grid" style="display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:12px;margin-bottom:10px;width:100%;box-sizing:border-box;">
+            <div class="gos-dr-grid-col" style="min-width:0;box-sizing:border-box;">
+              <label style="font-size:12px;color:#94a3b8;font-weight:600;display:block;margin-bottom:4px;">Domain Min (Left)</label>
+              <div class="gos-dr-input-row" style="display:flex;align-items:center;gap:6px;width:100%;min-width:0;box-sizing:border-box;">
+                <button type="button" id="gos-fdr-dmin-inc" class="gos-dr-inc-btn" onclick="this.textContent = this.textContent === '[' ? '(' : '['" style="flex-shrink:0;height:42px;width:36px;font-size:18px;font-weight:700;background:rgba(255,255,255,0.08);color:#38bdf8;border:1px solid rgba(56,189,248,0.3);border-radius:8px;cursor:pointer;box-sizing:border-box;display:flex;align-items:center;justify-content:center;">${targetEq.domainMinInc !== false ? '[' : '('}</button>
+                <input type="number" step="0.5" id="gos-fdr-dmin" class="gos-input" value="${targetEq.domainMin !== null && targetEq.domainMin !== undefined ? targetEq.domainMin : ''}" placeholder="-∞ (no min)" style="flex:1 1 0;min-width:0;width:0;height:42px;font-family:var(--mono);font-size:14px;font-weight:700;color:#f8fafc;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:0 10px;box-sizing:border-box;">
+              </div>
+            </div>
+            <div class="gos-dr-grid-col" style="min-width:0;box-sizing:border-box;">
+              <label style="font-size:12px;color:#94a3b8;font-weight:600;display:block;margin-bottom:4px;">Domain Max (Right)</label>
+              <div class="gos-dr-input-row" style="display:flex;align-items:center;gap:6px;width:100%;min-width:0;box-sizing:border-box;">
+                <input type="number" step="0.5" id="gos-fdr-dmax" class="gos-input" value="${targetEq.domainMax !== null && targetEq.domainMax !== undefined ? targetEq.domainMax : ''}" placeholder="+∞ (no max)" style="flex:1 1 0;min-width:0;width:0;height:42px;font-family:var(--mono);font-size:14px;font-weight:700;color:#f8fafc;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:0 10px;box-sizing:border-box;">
+                <button type="button" id="gos-fdr-dmax-inc" class="gos-dr-inc-btn" onclick="this.textContent = this.textContent === ']' ? ')' : ']'" style="flex-shrink:0;height:42px;width:36px;font-size:18px;font-weight:700;background:rgba(255,255,255,0.08);color:#38bdf8;border:1px solid rgba(56,189,248,0.3);border-radius:8px;cursor:pointer;box-sizing:border-box;display:flex;align-items:center;justify-content:center;">${targetEq.domainMaxInc !== false ? ']' : ')'}</button>
+              </div>
+            </div>
+          </div>
+          <!-- Domain Presets -->
+          <div style="display:flex;flex-wrap:wrap;gap:6px;">
+            <button type="button" class="gos-preset-chip" style="cursor:pointer;padding:5px 10px;border-radius:6px;background:rgba(255,255,255,0.06);color:#f8fafc;border:1px solid rgba(255,255,255,0.1);" onclick="GraphObject.setFuncDomainPreset('all')">ℝ (All Reals)</button>
+            <button type="button" class="gos-preset-chip" style="cursor:pointer;padding:5px 10px;border-radius:6px;background:rgba(255,255,255,0.06);color:#f8fafc;border:1px solid rgba(255,255,255,0.1);" onclick="GraphObject.setFuncDomainPreset('positive')">x ≥ 0</button>
+            <button type="button" class="gos-preset-chip" style="cursor:pointer;padding:5px 10px;border-radius:6px;background:rgba(255,255,255,0.06);color:#f8fafc;border:1px solid rgba(255,255,255,0.1);" onclick="GraphObject.setFuncDomainPreset('[-2,3]')">[-2, 3]</button>
+            <button type="button" class="gos-preset-chip" style="cursor:pointer;padding:5px 10px;border-radius:6px;background:rgba(255,255,255,0.06);color:#f8fafc;border:1px solid rgba(255,255,255,0.1);" onclick="GraphObject.setFuncDomainPreset('[-5,5]')">[-5, 5]</button>
+            <button type="button" class="gos-preset-chip" style="cursor:pointer;padding:5px 10px;border-radius:6px;background:rgba(255,255,255,0.06);color:#f8fafc;border:1px solid rgba(255,255,255,0.1);" onclick="GraphObject.setFuncDomainPreset('trig')">[0, 2π]</button>
+            <button type="button" class="gos-preset-chip" style="cursor:pointer;padding:5px 10px;border-radius:6px;background:rgba(255,255,255,0.06);color:#f8fafc;border:1px solid rgba(255,255,255,0.1);" onclick="GraphObject.setFuncDomainPreset('[-pi,pi]')">[-π, π]</button>
+          </div>
+        </div>
+
+        <!-- Function Range Restriction Card -->
+        <div class="gos-param-card" style="box-sizing:border-box;width:100%;margin-bottom:14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px 18px;overflow:hidden;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <strong style="color:#f8fafc;font-size:14.5px;">Function Range Restriction (y ∈ [min, max]):</strong>
+            <span style="font-size:12px;color:#94a3b8;">Restricts vertical curve values</span>
+          </div>
+          <div class="gos-dr-grid" style="display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:12px;margin-bottom:10px;width:100%;box-sizing:border-box;">
+            <div class="gos-dr-grid-col" style="min-width:0;box-sizing:border-box;">
+              <label style="font-size:12px;color:#94a3b8;font-weight:600;display:block;margin-bottom:4px;">Range Min (Bottom)</label>
+              <div class="gos-dr-input-row" style="display:flex;align-items:center;gap:6px;width:100%;min-width:0;box-sizing:border-box;">
+                <button type="button" id="gos-fdr-rmin-inc" class="gos-dr-inc-btn" onclick="this.textContent = this.textContent === '[' ? '(' : '['" style="flex-shrink:0;height:42px;width:36px;font-size:18px;font-weight:700;background:rgba(255,255,255,0.08);color:#38bdf8;border:1px solid rgba(56,189,248,0.3);border-radius:8px;cursor:pointer;box-sizing:border-box;display:flex;align-items:center;justify-content:center;">${targetEq.rangeMinInc !== false ? '[' : '('}</button>
+                <input type="number" step="0.5" id="gos-fdr-rmin" class="gos-input" value="${targetEq.rangeMin !== null && targetEq.rangeMin !== undefined ? targetEq.rangeMin : ''}" placeholder="-∞ (no min)" style="flex:1 1 0;min-width:0;width:0;height:42px;font-family:var(--mono);font-size:14px;font-weight:700;color:#f8fafc;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:0 10px;box-sizing:border-box;">
+              </div>
+            </div>
+            <div class="gos-dr-grid-col" style="min-width:0;box-sizing:border-box;">
+              <label style="font-size:12px;color:#94a3b8;font-weight:600;display:block;margin-bottom:4px;">Range Max (Top)</label>
+              <div class="gos-dr-input-row" style="display:flex;align-items:center;gap:6px;width:100%;min-width:0;box-sizing:border-box;">
+                <input type="number" step="0.5" id="gos-fdr-rmax" class="gos-input" value="${targetEq.rangeMax !== null && targetEq.rangeMax !== undefined ? targetEq.rangeMax : ''}" placeholder="+∞ (no max)" style="flex:1 1 0;min-width:0;width:0;height:42px;font-family:var(--mono);font-size:14px;font-weight:700;color:#f8fafc;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:0 10px;box-sizing:border-box;">
+                <button type="button" id="gos-fdr-rmax-inc" class="gos-dr-inc-btn" onclick="this.textContent = this.textContent === ']' ? ')' : ']'" style="flex-shrink:0;height:42px;width:36px;font-size:18px;font-weight:700;background:rgba(255,255,255,0.08);color:#38bdf8;border:1px solid rgba(56,189,248,0.3);border-radius:8px;cursor:pointer;box-sizing:border-box;display:flex;align-items:center;justify-content:center;">${targetEq.rangeMaxInc !== false ? ']' : ')'}</button>
+              </div>
+            </div>
+          </div>
+          <!-- Range Presets -->
+          <div style="display:flex;flex-wrap:wrap;gap:6px;">
+            <button type="button" class="gos-preset-chip" style="cursor:pointer;padding:5px 10px;border-radius:6px;background:rgba(255,255,255,0.06);color:#f8fafc;border:1px solid rgba(255,255,255,0.1);" onclick="GraphObject.setFuncRangePreset('all')">ℝ (All Reals)</button>
+            <button type="button" class="gos-preset-chip" style="cursor:pointer;padding:5px 10px;border-radius:6px;background:rgba(255,255,255,0.06);color:#f8fafc;border:1px solid rgba(255,255,255,0.1);" onclick="GraphObject.setFuncRangePreset('positive')">y ≥ 0</button>
+            <button type="button" class="gos-preset-chip" style="cursor:pointer;padding:5px 10px;border-radius:6px;background:rgba(255,255,255,0.06);color:#f8fafc;border:1px solid rgba(255,255,255,0.1);" onclick="GraphObject.setFuncRangePreset('unit')">[-1, 1]</button>
+            <button type="button" class="gos-preset-chip" style="cursor:pointer;padding:5px 10px;border-radius:6px;background:rgba(255,255,255,0.06);color:#f8fafc;border:1px solid rgba(255,255,255,0.1);" onclick="GraphObject.setFuncRangePreset('[0,10]')">[0, 10]</button>
+          </div>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid rgba(255,255,255,0.1);padding-top:18px;">
+          <button type="button" class="gos-btn gos-btn-secondary" onclick="GraphObject.setFuncDomainPreset('all'); GraphObject.setFuncRangePreset('all');" style="padding:10px 16px;font-size:13.5px;cursor:pointer;border-radius:10px;">
+            ⤢ Clear Restriction (All ℝ)
+          </button>
+          <div style="display:flex;gap:10px;">
+            <button type="button" class="gos-btn gos-btn-secondary" onclick="GraphObject.closeDomainRangeModal()" style="padding:10px 18px;font-size:13.5px;cursor:pointer;border-radius:10px;">Cancel</button>
+            <button type="button" class="gos-btn gos-btn-primary" onclick="GraphObject.applyDomainRange()" style="background:#38bdf8;color:#0b1329;font-weight:700;padding:10px 20px;font-size:14px;cursor:pointer;border-radius:10px;border:none;">
+              ✓ Apply Function Domain &amp; Range
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+  }
+
+  function onDomainRangeTargetChange(newIdx) {
+    activeDomainRangeEqIdx = newIdx;
+    const g = modalTargetGraph || editingGraph;
+    if (g) openDomainRangeModal(g);
+  }
+
+  function setFuncDomainPreset(preset) {
+    const dminEl = document.getElementById('gos-fdr-dmin');
+    const dmaxEl = document.getElementById('gos-fdr-dmax');
+    if (!dminEl || !dmaxEl) return;
+
+    if (preset === 'all') {
+      dminEl.value = ''; dmaxEl.value = '';
+    } else if (preset === 'positive') {
+      dminEl.value = '0'; dmaxEl.value = '';
+    } else if (preset === '[-2,3]') {
+      dminEl.value = '-2'; dmaxEl.value = '3';
+    } else if (preset === '[-5,5]') {
+      dminEl.value = '-5'; dmaxEl.value = '5';
+    } else if (preset === 'trig') {
+      dminEl.value = '0'; dmaxEl.value = '6.28';
+    } else if (preset === '[-pi,pi]') {
+      dminEl.value = '-3.14'; dmaxEl.value = '3.14';
+    }
+  }
+
+  function setFuncRangePreset(preset) {
+    const rminEl = document.getElementById('gos-fdr-rmin');
+    const rmaxEl = document.getElementById('gos-fdr-rmax');
+    if (!rminEl || !rmaxEl) return;
+
+    if (preset === 'all') {
+      rminEl.value = ''; rmaxEl.value = '';
+    } else if (preset === 'positive') {
+      rminEl.value = '0'; rmaxEl.value = '';
+    } else if (preset === 'unit') {
+      rminEl.value = '-1'; rmaxEl.value = '1';
+    } else if (preset === '[0,10]') {
+      rminEl.value = '0'; rmaxEl.value = '10';
+    }
+  }
+
+  function closeDomainRangeModal() {
+    const modal = document.getElementById('gos-domain-range-modal');
+    if (modal) modal.remove();
+  }
+
+  function applyDomainRange() {
+    const g = modalTargetGraph || editingGraph;
+    if (!g) return;
+    const equations = (g.equations && g.equations.length) ? g.equations : [];
+    const targetEq = equations[activeDomainRangeEqIdx];
+    if (!targetEq) return;
+
+    const dminVal = document.getElementById('gos-fdr-dmin')?.value.trim();
+    const dmaxVal = document.getElementById('gos-fdr-dmax')?.value.trim();
+    targetEq.domainMin = (dminVal !== '' && !isNaN(parseFloat(dminVal))) ? parseFloat(dminVal) : null;
+    targetEq.domainMax = (dmaxVal !== '' && !isNaN(parseFloat(dmaxVal))) ? parseFloat(dmaxVal) : null;
+    targetEq.domainMinInc = (document.getElementById('gos-fdr-dmin-inc')?.textContent === '[');
+    targetEq.domainMaxInc = (document.getElementById('gos-fdr-dmax-inc')?.textContent === ']');
+
+    const rminVal = document.getElementById('gos-fdr-rmin')?.value.trim();
+    const rmaxVal = document.getElementById('gos-fdr-rmax')?.value.trim();
+    targetEq.rangeMin = (rminVal !== '' && !isNaN(parseFloat(rminVal))) ? parseFloat(rminVal) : null;
+    targetEq.rangeMax = (rmaxVal !== '' && !isNaN(parseFloat(rmaxVal))) ? parseFloat(rmaxVal) : null;
+    targetEq.rangeMinInc = (document.getElementById('gos-fdr-rmin-inc')?.textContent === '[');
+    targetEq.rangeMaxInc = (document.getElementById('gos-fdr-rmax-inc')?.textContent === ']');
+
+    if (typeof Canvas !== 'undefined' && Canvas.renderShapes) Canvas.renderShapes();
+    if (typeof Canvas !== 'undefined' && Canvas.saveHistory) Canvas.saveHistory();
+
+    if (typeof App !== 'undefined' && App.showToast) {
+      const hasDom = (targetEq.domainMin !== null || targetEq.domainMax !== null);
+      const msg = hasDom
+        ? `✓ Applied ${targetEq.label} Domain [${targetEq.domainMin ?? '-∞'}, ${targetEq.domainMax ?? '∞'}]`
+        : `✓ Cleared restriction for ${targetEq.label}`;
+      App.showToast(msg);
+    }
+    closeDomainRangeModal();
+  }
+
+  function openColorThemeModal(g) {
+    if (!g) return;
+    closeColorThemeModal();
+    closeDomainRangeModal();
+    closeQuickCompareModal();
+    modalTargetGraph = g;
+
+    const equations = (g.equations && g.equations.length) ? g.equations : [
+      { id: 1, label: 'f₁(x)', expr: g.expr || 'x²', color: g.color || '#38bdf8', visible: true }
+    ];
+    const activeBoardBg = (g.bgColor || '#0b1120').toLowerCase();
+
+    const modal = document.createElement('div');
+    modal.id = 'gos-color-theme-modal';
+    modal.className = 'board-bg-modal open';
+    modal.innerHTML = `
+      <div class="bbm-overlay" onclick="GraphObject.closeColorThemeModal()"></div>
+      <div class="bbm-content" style="max-width:580px;padding:26px;border-radius:18px;background:rgba(11,19,41,0.96);box-shadow:0 24px 60px rgba(0,0,0,0.75);backdrop-filter:blur(18px);border:1px solid rgba(245,158,11,0.35);">
+        <div class="bbm-header" style="margin-bottom:18px;display:flex;justify-content:space-between;align-items:center;">
+          <div class="bbm-title-wrap" style="display:flex;gap:12px;align-items:center;">
+            <span style="font-size:26px;">🎨</span>
+            <div>
+              <div class="bbm-title" style="font-size:18px;color:#f8fafc;font-weight:700;">Graph Colors &amp; Background Theme</div>
+              <div class="bbm-subtitle" style="font-size:12.5px;color:#94a3b8;margin-top:2px;">Customize the graph workspace canvas theme and individual curve line colors.</div>
+            </div>
+          </div>
+          <button class="bbm-close" onclick="GraphObject.closeColorThemeModal()" style="background:rgba(255,255,255,0.08);border:none;color:#cbd5e1;font-size:18px;width:32px;height:32px;border-radius:50%;cursor:pointer;">✕</button>
+        </div>
+
+        <!-- 1. Graph Background / Board Theme -->
+        <div class="gos-param-card" style="margin-bottom:18px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:16px 18px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <strong style="color:#f8fafc;font-size:14.5px;">Graph Canvas Background Theme:</strong>
+            <span style="font-size:12px;color:#94a3b8;">High contrast for 86" smart board</span>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:10px;">
+            ${BOARD_THEMES.map(bt => {
+              const isSel = (activeBoardBg === bt.color.toLowerCase());
+              return `
+                <button type="button" class="gos-theme-btn ${isSel ? 'active' : ''}"
+                  style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;background:${isSel ? 'rgba(56,189,248,0.18)' : 'rgba(255,255,255,0.05)'};border:2px solid ${isSel ? '#38bdf8' : 'rgba(255,255,255,0.15)'};cursor:pointer;transition:all 0.15s ease;"
+                  onclick="
+                    GraphObject.setBoardTheme('${bt.color}');
+                    document.querySelectorAll('#gos-color-theme-modal .gos-theme-btn').forEach(b => { b.style.borderColor = 'rgba(255,255,255,0.15)'; b.style.background = 'rgba(255,255,255,0.05)'; });
+                    this.style.borderColor = '#38bdf8';
+                    this.style.background = 'rgba(56,189,248,0.18)';
+                  ">
+                  <span style="width:20px;height:20px;border-radius:6px;background:${bt.color};border:1.5px solid rgba(255,255,255,0.35);flex-shrink:0;"></span>
+                  <span style="font-size:13px;font-weight:700;color:#f8fafc;">${bt.name}</span>
+                </button>
+              `;
+            }).join('')}
+          </div>
+        </div>
+
+        <!-- 2. Curve Line Colors -->
+        <div class="gos-param-card" style="margin-bottom:18px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:16px 18px;">
+          <strong style="color:#f8fafc;font-size:14.5px;display:block;margin-bottom:12px;">Function Curve Line Colors:</strong>
+          ${equations.map((eq, eqIdx) => `
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:${eqIdx < equations.length - 1 ? '12px' : '0'};padding-bottom:${eqIdx < equations.length - 1 ? '10px' : '0'};border-bottom:${eqIdx < equations.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none'};">
+              <span style="font-size:13.5px;font-weight:700;color:${eq.color || '#38bdf8'};font-family:var(--mono);">
+                ${eq.label || `f${eqIdx+1}(x)`}: y = ${eq.expr}
+              </span>
+              <div style="display:flex;gap:8px;align-items:center;">
+                ${LINE_COLORS.map(c => {
+                  const isCur = ((eq.color || '').toLowerCase() === c.color.toLowerCase());
+                  return `
+                    <button type="button" style="width:26px;height:26px;border-radius:50%;background:${c.color};border:2px solid ${isCur ? '#ffffff' : 'transparent'};box-shadow:${isCur ? '0 0 8px ' + c.color : 'none'};cursor:pointer;transition:transform 0.15s ease;"
+                      title="${c.name}"
+                      onclick="
+                        GraphObject.setEqColor(${eqIdx}, '${c.color}');
+                        GraphObject.openColorThemeModal(GraphObject.getModalTargetGraph());
+                      ">
+                    </button>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;gap:10px;border-top:1px solid rgba(255,255,255,0.1);padding-top:16px;">
+          <button type="button" class="gos-btn gos-btn-primary" onclick="GraphObject.closeColorThemeModal()" style="background:#38bdf8;color:#0b1329;font-weight:700;padding:10px 24px;font-size:14px;cursor:pointer;border-radius:10px;border:none;">
+            ✓ Done
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+  }
+
+  function closeColorThemeModal() {
+    const modal = document.getElementById('gos-color-theme-modal');
+    if (modal) modal.remove();
+  }
+
+  function setEqColor(eqIdx, color) {
+    const g = modalTargetGraph || editingGraph;
+    if (!g || !g.equations || !g.equations[eqIdx]) return;
+    g.equations[eqIdx].color = color;
+    if (eqIdx === 0) g.color = color;
+    if (typeof Canvas !== 'undefined' && Canvas.renderShapes) Canvas.renderShapes();
+    if (typeof Canvas !== 'undefined' && Canvas.saveHistory) Canvas.saveHistory();
+    if (typeof App !== 'undefined' && App.showToast) App.showToast(`Updated ${g.equations[eqIdx].label || 'Curve'} Color`);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
   // 8. 2D GRAPHABLE STUDIO MODAL (5 Modern Tabs)
   // ─────────────────────────────────────────────────────────────────────────────
 
@@ -2041,17 +3063,17 @@ const GraphObject = (() => {
     modal.className = 'board-bg-modal';
     modal.innerHTML = `
       <div class="bbm-overlay" onclick="GraphObject.closeEditor()"></div>
-      <div class="bbm-content" style="max-width:880px;width:95vw;border:1px solid rgba(56,189,248,0.35);box-shadow:0 24px 60px rgba(0,0,0,0.85);border-radius:14px;background:#090d16;">
+      <div class="bbm-content">
         <!-- Header -->
-        <div class="bbm-header" style="background:rgba(15,23,42,0.9);border-bottom:1px solid rgba(255,255,255,0.08);padding:14px 22px;">
+        <div class="bbm-header">
           <div class="bbm-title-wrap">
-            <span class="bbm-icon" style="font-size:22px;">📈</span>
+            <span class="bbm-icon" style="font-size:26px;">📈</span>
             <div>
-              <div class="bbm-title" style="font-size:16.5px;font-weight:700;letter-spacing:0.01em;color:#f8fafc;">2D Graphable Workspace</div>
-              <div style="font-size:11.5px;color:#94a3b8;">Function Families, Universal Transformations &amp; Analysis</div>
+              <div class="bbm-title">2D Graphable Workspace</div>
+              <div class="bbm-subtitle">Function Families, Universal Transformations &amp; Analysis</div>
             </div>
           </div>
-          <button class="bbm-close" onclick="GraphObject.closeEditor()">✕</button>
+          <button class="bbm-close" onclick="GraphObject.closeEditor()" title="Close Workspace (Esc)">✕</button>
         </div>
 
         <!-- 5 Studio Tabs -->
@@ -2064,21 +3086,21 @@ const GraphObject = (() => {
         </div>
 
         <!-- Main Body -->
-        <div id="gos-body" style="padding:18px 22px;max-height:560px;overflow-y:auto;display:flex;flex-direction:column;gap:14px;">
+        <div id="gos-body">
           <!-- Dynamically populated -->
         </div>
 
         <!-- Footer -->
-        <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(15,23,42,0.95);border-top:1px solid rgba(255,255,255,0.08);padding:12px 22px;">
-          <div style="display:flex;gap:8px;">
-            <button class="tb-btn" style="background:rgba(255,255,255,0.08);color:#94a3b8;font-size:12px;padding:7px 14px;border-radius:6px;" onclick="GraphObject.autoScaleView(GraphObject.getEditingGraph())">
+        <div class="gos-footer">
+          <div style="display:flex;gap:10px;">
+            <button class="gos-btn gos-btn-secondary" onclick="GraphObject.autoScaleView(GraphObject.getEditingGraph())" title="Fit axes bounds automatically to function range">
               ✨ Auto Scale
             </button>
-            <button class="tb-btn" style="background:rgba(255,255,255,0.08);color:#94a3b8;font-size:12px;padding:7px 14px;border-radius:6px;" onclick="GraphObject.resetView(GraphObject.getEditingGraph())">
+            <button class="gos-btn gos-btn-secondary" onclick="GraphObject.resetView(GraphObject.getEditingGraph())" title="Reset axes bounds to default (-10 to 10)">
               ⤢ Reset View
             </button>
           </div>
-          <button class="tb-btn" style="background:linear-gradient(135deg,#38bdf8,#0284c7);color:#ffffff;font-weight:700;padding:8px 24px;font-size:13px;border-radius:6px;box-shadow:0 4px 14px rgba(56,189,248,0.25);" onclick="GraphObject.saveEditor()">
+          <button class="gos-btn gos-btn-primary" onclick="GraphObject.saveEditor()" title="Save and Apply to Smart Board">
             ✓ Apply to Board
           </button>
         </div>
@@ -2140,16 +3162,20 @@ const GraphObject = (() => {
 
     container.innerHTML = `
       <!-- Search & Category Filters -->
-      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:6px;">
-        <input type="text" id="gos-lib-search" placeholder="🔍 Search by name, formula, or properties (e.g. sinh, floor, cubic)..." 
-          value="${librarySearchTerm}" 
-          style="width:100%;padding:9px 14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#f8fafc;font-size:13px;outline:none;"
-          oninput="GraphObject.handleSearchInput(this.value)">
+      <div class="gos-lib-toolbar">
+        <div class="gos-search-box">
+          <span class="gos-search-icon">🔍</span>
+          <input type="text" id="gos-lib-search" class="gos-search-input" 
+            placeholder="Search 35 function families (e.g. sinh, floor, cubic, periodic, rational)..." 
+            value="${librarySearchTerm}" 
+            oninput="GraphObject.handleSearchInput(this.value)">
+          ${librarySearchTerm ? `<button class="gos-search-clear" onclick="GraphObject.handleSearchInput('');" title="Clear Search">✕</button>` : ''}
+        </div>
 
-        <div style="display:flex;flex-wrap:wrap;gap:6px;">
+        <div class="gos-category-pills">
           ${categories.map(cat => `
             <button class="gos-sec-tab ${libraryCategory === cat.id ? 'active' : ''}" 
-              onclick="GraphObject.setLibraryCategory('${cat.id}')" style="padding:5px 12px;font-size:12px;">
+              onclick="GraphObject.setLibraryCategory('${cat.id}')">
               ${cat.label}
             </button>
           `).join('')}
@@ -2157,26 +3183,29 @@ const GraphObject = (() => {
       </div>
 
       <!-- Grid of Cards -->
-      <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(250px, 1fr));gap:12px;">
+      <div class="gos-cards-grid">
         ${filteredKeys.map(key => {
           const item = FUNCTION_FAMILIES[key];
           const isCurrent = g.activeFamilyId === item.id;
           return `
             <div class="gos-template-card ${isCurrent ? 'active-family' : ''}" 
               onclick="GraphObject.applyFamily('${item.id}')"
-              style="padding:14px;border-radius:10px;background:rgba(255,255,255,0.03);border:1px solid ${isCurrent ? '#38bdf8' : 'rgba(255,255,255,0.08)'};cursor:pointer;transition:all 0.15s ease;">
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-                <span style="font-weight:700;color:#f8fafc;font-size:13.5px;">${item.name}</span>
-                <span class="gos-math-tag" style="background:rgba(56,189,248,0.15);color:#38bdf8;font-size:11px;padding:2px 6px;border-radius:4px;font-family:monospace;">
+              title="${item.name}: ${item.description}">
+              <div class="gos-card-header">
+                <span class="gos-card-title">${item.name}</span>
+                <span class="gos-math-tag" title="${item.formula}">
                   ${item.formula}
                 </span>
               </div>
-              <div style="font-size:11.5px;color:#94a3b8;line-height:1.45;margin-bottom:8px;">
+              <div class="gos-card-desc">
                 ${item.description}
               </div>
-              <div style="display:flex;align-items:center;justify-content:space-between;font-size:10.5px;color:#64748b;border-top:1px solid rgba(255,255,255,0.06);padding-top:6px;">
-                <span>Domain: <strong style="color:#cbd5e1;">${item.domain}</strong></span>
-                <span style="color:#38bdf8;font-weight:600;">Load ➜</span>
+              <div class="gos-card-footer">
+                <div class="gos-card-domain">Domain: <strong>${item.domain}</strong></div>
+                <div class="gos-card-action-group" style="display:flex;gap:6px;align-items:center;">
+                  <button type="button" class="gos-card-btn-cmp" onclick="event.stopPropagation(); GraphObject.applyFamily('${item.id}', true)" title="Add ${item.name} as comparison curve on same graph" style="padding:5px 10px;border-radius:6px;background:rgba(34,197,94,0.18);border:1px solid rgba(34,197,94,0.45);color:#4ade80;font-size:11.5px;font-weight:700;cursor:pointer;">＋ Compare</button>
+                  <button type="button" class="gos-card-btn-load" onclick="event.stopPropagation(); GraphObject.applyFamily('${item.id}', false)" title="Load ${item.name} as primary graph" style="padding:5px 12px;border-radius:6px;background:rgba(56,189,248,0.2);border:1px solid rgba(56,189,248,0.5);color:#38bdf8;font-size:11.5px;font-weight:700;cursor:pointer;">Load ➜</button>
+                </div>
               </div>
             </div>
           `;
@@ -2205,10 +3234,39 @@ const GraphObject = (() => {
     }
   }
 
-  function applyFamily(familyId) {
+  function applyFamily(familyId, isCompare = false) {
     if (!editingGraph) return;
     const fam = FUNCTION_FAMILIES[familyId];
     if (!fam) return;
+
+    if (isCompare) {
+      if (!editingGraph.equations) editingGraph.equations = [];
+      const usedColors = editingGraph.equations.map(e => (e.color || '').toLowerCase());
+      const nextColObj = LINE_COLORS.find(c => !usedColors.includes(c.color.toLowerCase())) || LINE_COLORS[editingGraph.equations.length % LINE_COLORS.length];
+      const nextColor = nextColObj.color;
+      const num = editingGraph.equations.length + 1;
+      const numSub = num === 1 ? '₁' : (num === 2 ? '₂' : (num === 3 ? '₃' : (num === 4 ? '₄' : String(num))));
+
+      editingGraph.equations.push({
+        id: Date.now(),
+        label: `f${numSub}(x)`,
+        expr: fam.defaultExpr,
+        color: nextColor,
+        lineWidth: 2.8,
+        visible: true
+      });
+
+      if (typeof Canvas !== 'undefined' && Canvas.renderShapes) {
+        Canvas.renderShapes();
+        if (Canvas.saveHistory) Canvas.saveHistory();
+      }
+
+      if (typeof App !== 'undefined' && App.showToast) {
+        App.showToast(`✓ Added ${fam.name} for comparison (f${numSub}(x))`);
+      }
+      switchStudioTab('functions');
+      return;
+    }
 
     editingGraph.activeFamilyId = fam.id;
     editingGraph.activeParentExpr = fam.parentExpr || fam.defaultExpr;
@@ -2216,6 +3274,7 @@ const GraphObject = (() => {
     if (fam.params) {
       editingGraph.params = { ...fam.params };
     }
+    editingGraph.title = fam.name;
 
     // Set first equation to the default or transformed expression
     const initialExpr = fam.defaultExpr;
@@ -2449,8 +3508,9 @@ const GraphObject = (() => {
   }
 
   function setBoardTheme(color) {
-    if (!editingGraph) return;
-    editingGraph.bgColor = color;
+    const g = editingGraph || modalTargetGraph;
+    if (!g) return;
+    g.bgColor = color;
 
     const modal = document.getElementById('graph-object-editor-modal');
     if (modal) {
@@ -2476,64 +3536,64 @@ const GraphObject = (() => {
     const analysis = analyzeFunction(eq, g.xMin, g.xMax);
 
     container.innerHTML = `
-      <div style="background:rgba(56,189,248,0.08);border:1px solid rgba(56,189,248,0.25);border-radius:12px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+      <div style="background:rgba(56,189,248,0.1);border:1.5px solid rgba(56,189,248,0.3);border-radius:14px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;">
         <div>
-          <span style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;">Active Function Under Analysis</span>
-          <div style="font-size:20px;font-weight:800;color:#38bdf8;font-family:monospace;">y = ${eq}</div>
+          <span style="font-size:12.5px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:0.04em;">Active Function Under Analysis</span>
+          <div style="font-size:24px;font-weight:800;color:#38bdf8;font-family:'JetBrains Mono',monospace;margin-top:2px;">y = ${eq}</div>
         </div>
-        <span style="font-size:11px;color:#10b981;background:rgba(16,185,129,0.15);padding:4px 10px;border-radius:6px;border:1px solid rgba(16,185,129,0.3);font-weight:600;">
-          All Properties Simultaneous &amp; Non-Exclusive
+        <span style="font-size:12.5px;color:#10b981;background:rgba(16,185,129,0.18);padding:6px 14px;border-radius:8px;border:1px solid rgba(16,185,129,0.35);font-weight:700;">
+          ✓ All Properties Simultaneous &amp; Non-Exclusive
         </span>
       </div>
 
-      <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(260px, 1fr));gap:12px;">
+      <div class="gos-analysis-grid">
         <!-- Card 1: Domain -->
-        <div class="gos-param-card" style="border-left:3px solid #38bdf8;">
-          <div style="font-size:12px;font-weight:700;color:#38bdf8;margin-bottom:4px;">🌐 Domain</div>
-          <div style="font-size:15px;font-weight:700;color:#f8fafc;font-family:monospace;margin-bottom:4px;">${analysis.domain}</div>
-          <div style="font-size:11px;color:#94a3b8;">Set of all real inputs where function is well-defined.</div>
+        <div class="gos-analysis-card" style="border-left:4px solid #38bdf8;">
+          <div class="gos-analysis-title" style="color:#38bdf8;">🌐 Domain</div>
+          <div class="gos-analysis-val">${analysis.domain}</div>
+          <div class="gos-analysis-desc">Set of all real inputs where function is well-defined.</div>
         </div>
 
         <!-- Card 2: Range -->
-        <div class="gos-param-card" style="border-left:3px solid #10b981;">
-          <div style="font-size:12px;font-weight:700;color:#10b981;margin-bottom:4px;">📊 Range</div>
-          <div style="font-size:15px;font-weight:700;color:#f8fafc;font-family:monospace;margin-bottom:4px;">${analysis.range}</div>
-          <div style="font-size:11px;color:#94a3b8;">Set of all possible output values evaluated across visible window.</div>
+        <div class="gos-analysis-card" style="border-left:4px solid #10b981;">
+          <div class="gos-analysis-title" style="color:#10b981;">📊 Range</div>
+          <div class="gos-analysis-val">${analysis.range}</div>
+          <div class="gos-analysis-desc">Set of all possible output values evaluated across visible window.</div>
         </div>
 
         <!-- Card 3: Parity & Symmetry -->
-        <div class="gos-param-card" style="border-left:3px solid #a855f7;">
-          <div style="font-size:12px;font-weight:700;color:#c084fc;margin-bottom:4px;">⚖️ Parity (Symmetry)</div>
-          <div style="font-size:15px;font-weight:700;color:#f8fafc;margin-bottom:4px;">${analysis.parity}</div>
-          <div style="font-size:11px;color:#94a3b8;">${analysis.parityDetails}</div>
+        <div class="gos-analysis-card" style="border-left:4px solid #c084fc;">
+          <div class="gos-analysis-title" style="color:#c084fc;">⚖️ Parity (Symmetry)</div>
+          <div class="gos-analysis-val">${analysis.parity}</div>
+          <div class="gos-analysis-desc">${analysis.parityDetails}</div>
         </div>
 
         <!-- Card 4: Periodicity -->
-        <div class="gos-param-card" style="border-left:3px solid #f59e0b;">
-          <div style="font-size:12px;font-weight:700;color:#fbbf24;margin-bottom:4px;">⏱️ Periodicity</div>
-          <div style="font-size:15px;font-weight:700;color:#f8fafc;margin-bottom:4px;">${analysis.periodicity}</div>
-          <div style="font-size:11px;color:#94a3b8;">${analysis.periodDetails}</div>
+        <div class="gos-analysis-card" style="border-left:4px solid #fbbf24;">
+          <div class="gos-analysis-title" style="color:#fbbf24;">⏱️ Periodicity</div>
+          <div class="gos-analysis-val">${analysis.periodicity}</div>
+          <div class="gos-analysis-desc">${analysis.periodDetails}</div>
         </div>
 
         <!-- Card 5: Continuity & Asymptotes -->
-        <div class="gos-param-card" style="border-left:3px solid #f43f5e;">
-          <div style="font-size:12px;font-weight:700;color:#f43f5e;margin-bottom:4px;">🚧 Continuity &amp; Asymptotes</div>
-          <div style="font-size:15px;font-weight:700;color:#f8fafc;margin-bottom:4px;">${analysis.continuity}</div>
-          <div style="font-size:11px;color:#94a3b8;">${analysis.continuityDetails}</div>
+        <div class="gos-analysis-card" style="border-left:4px solid #f43f5e;">
+          <div class="gos-analysis-title" style="color:#f43f5e;">🚧 Continuity &amp; Asymptotes</div>
+          <div class="gos-analysis-val">${analysis.continuity}</div>
+          <div class="gos-analysis-desc">${analysis.continuityDetails}</div>
         </div>
 
         <!-- Card 6: Monotonicity -->
-        <div class="gos-param-card" style="border-left:3px solid #06b6d4;">
-          <div style="font-size:12px;font-weight:700;color:#06b6d4;margin-bottom:4px;">📈 Monotonicity &amp; Extrema</div>
-          <div style="font-size:15px;font-weight:700;color:#f8fafc;margin-bottom:4px;">${analysis.monotonicity}</div>
-          <div style="font-size:11px;color:#94a3b8;">${analysis.monoDetails}</div>
+        <div class="gos-analysis-card" style="border-left:4px solid #06b6d4;">
+          <div class="gos-analysis-title" style="color:#06b6d4;">📈 Monotonicity &amp; Extrema</div>
+          <div class="gos-analysis-val">${analysis.monotonicity}</div>
+          <div class="gos-analysis-desc">${analysis.monoDetails}</div>
         </div>
 
-        <!-- Card 7: One-to-One & Invertibility -->
-        <div class="gos-param-card" style="border-left:3px solid #eab308;grid-column:span 2;">
-          <div style="font-size:12px;font-weight:700;color:#eab308;margin-bottom:4px;">🎯 One-to-One (Horizontal Line Test) &amp; Invertibility</div>
-          <div style="font-size:15px;font-weight:700;color:#f8fafc;margin-bottom:4px;">${analysis.isOneToOne}</div>
-          <div style="font-size:11px;color:#94a3b8;">${analysis.oneToOneDetails}</div>
+        <!-- Card 7: One-to-One & Invertibility (Full Span) -->
+        <div class="gos-analysis-card" style="border-left:4px solid #eab308;grid-column:1 / -1;">
+          <div class="gos-analysis-title" style="color:#eab308;">🎯 One-to-One (Horizontal Line Test) &amp; Invertibility</div>
+          <div class="gos-analysis-val">${analysis.isOneToOne}</div>
+          <div class="gos-analysis-desc">${analysis.oneToOneDetails}</div>
         </div>
       </div>
     `;
@@ -2543,31 +3603,31 @@ const GraphObject = (() => {
   function renderFunctionsTab(container, g) {
     const eqs = g.equations || [];
     container.innerHTML = `
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-        <span style="font-size:13px;font-weight:700;color:#f8fafc;">Active Equations List (${eqs.length})</span>
-        <div style="display:flex;gap:8px;">
-          <button class="tb-btn" style="padding:5px 12px;font-size:11.5px;background:rgba(56,189,248,0.2);color:#38bdf8;" onclick="GraphObject.addEquationRow()">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:10px;">
+        <span style="font-size:15px;font-weight:800;color:#f8fafc;">Active Equations List (${eqs.length})</span>
+        <div style="display:flex;gap:10px;">
+          <button class="gos-btn gos-btn-secondary" style="color:#38bdf8;background:rgba(56,189,248,0.18);border-color:rgba(56,189,248,0.35);" onclick="GraphObject.addEquationRow()">
             + Add Function
           </button>
-          <button class="tb-btn" style="padding:5px 12px;font-size:11.5px;background:rgba(168,85,247,0.2);color:#c084fc;" onclick="GraphObject.generateInverseCurve()" title="Add inverse curve x = f(y) and line y = x">
+          <button class="gos-btn gos-btn-secondary" style="color:#c084fc;background:rgba(168,85,247,0.18);border-color:rgba(168,85,247,0.35);" onclick="GraphObject.generateInverseCurve()" title="Add inverse curve x = f(y) and line y = x">
             🔄 Add Inverse &amp; Reflection
           </button>
         </div>
       </div>
 
-      <div style="display:flex;flex-direction:column;gap:8px;">
+      <div style="display:flex;flex-direction:column;gap:10px;">
         ${eqs.map((eq, i) => `
-          <div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:8px 12px;">
-            <input type="checkbox" ${eq.visible ? 'checked' : ''} onchange="GraphObject.toggleEqVisible(${i}, this.checked)" title="Show/Hide">
-            <span style="font-weight:700;color:${eq.color || '#38bdf8'};font-size:12px;min-width:40px;">${eq.isXEquals ? 'x(y)' : `f${i+1}(x)`}:</span>
-            <input type="text" value="${eq.expr}" style="flex:1;padding:6px 10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:#f8fafc;font-family:monospace;font-size:13px;" oninput="GraphObject.updateEqExpr(${i}, this.value)">
-            <input type="color" value="${eq.color || '#38bdf8'}" style="width:30px;height:30px;border:none;border-radius:6px;background:transparent;cursor:pointer;" onchange="GraphObject.updateEqColor(${i}, this.value)">
-            <button class="bbm-close" style="width:26px;height:26px;" onclick="GraphObject.removeEqRow(${i})" title="Delete">✕</button>
+          <div class="gos-eq-row">
+            <input type="checkbox" ${eq.visible ? 'checked' : ''} onchange="GraphObject.toggleEqVisible(${i}, this.checked)" title="Show/Hide" style="width:22px;height:22px;accent-color:#38bdf8;cursor:pointer;">
+            <span style="font-weight:800;color:${eq.color || '#38bdf8'};font-size:14px;min-width:48px;">${eq.isXEquals ? 'x(y)' : `f${i+1}(x)`}:</span>
+            <input type="text" class="gos-eq-input" value="${eq.expr}" oninput="GraphObject.updateEqExpr(${i}, this.value)">
+            <input type="color" value="${eq.color || '#38bdf8'}" style="width:40px;height:40px;border:none;border-radius:8px;background:transparent;cursor:pointer;" onchange="GraphObject.updateEqColor(${i}, this.value)">
+            <button class="bbm-close" style="width:38px;height:38px;font-size:18px;" onclick="GraphObject.removeEqRow(${i})" title="Delete Function">✕</button>
           </div>
         `).join('')}
       </div>
 
-      <div style="margin-top:14px;padding:12px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:8px;font-size:11.5px;color:#94a3b8;line-height:1.5;">
+      <div style="margin-top:14px;padding:14px 18px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;font-size:13px;color:#94a3b8;line-height:1.5;">
         💡 <strong>Multi-Function Tips:</strong> You can compare simultaneous functions, inspect intersections, test composite functions like <code>sin(x^2)</code>, or generate inverse reflections across the line <code>y = x</code>.
       </div>
     `;
@@ -2652,71 +3712,82 @@ const GraphObject = (() => {
   // ── Tab 5: Settings (Axes, Bounds & Grid) ──
   function renderSettingsTab(container, g) {
     container.innerHTML = `
-      <div style="display:flex;flex-direction:column;gap:14px;">
+      <div style="display:flex;flex-direction:column;gap:16px;">
         <!-- Equal Aspect Ratio -->
         <div class="gos-param-card">
-          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
-            <input type="checkbox" id="gos-equal-scale" ${g.equalAspect ? 'checked' : ''} style="width:16px;height:16px;">
+          <label style="display:flex;align-items:center;gap:12px;cursor:pointer;">
+            <input type="checkbox" id="gos-equal-scale" ${g.equalAspect ? 'checked' : ''} style="width:22px;height:22px;accent-color:#38bdf8;">
             <div>
-              <strong style="color:#f8fafc;font-size:13.5px;">1:1 Equal Aspect Ratio Scaling</strong>
-              <div style="font-size:11.5px;color:#94a3b8;">Ensures 1 unit on x-axis is physically equal to 1 unit on y-axis (ideal for trigonometry and circles).</div>
+              <strong style="color:#f8fafc;font-size:15px;">1:1 Equal Aspect Ratio Scaling</strong>
+              <div style="font-size:13px;color:#94a3b8;margin-top:2px;">Ensures 1 unit on x-axis is physically equal to 1 unit on y-axis (ideal for trigonometry, circles, and geometry).</div>
             </div>
           </label>
         </div>
 
-        <!-- Axis Range Bounds -->
+        <!-- Domain & Range Bounds -->
         <div class="gos-param-card">
-          <strong style="color:#f8fafc;font-size:13.5px;display:block;margin-bottom:8px;">Visible Coordinate Range Bounds</strong>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <strong style="color:#f8fafc;font-size:15px;">Domain (X-Axis) &amp; Range (Y-Axis) Bounds</strong>
+            <span style="font-size:12.5px;color:#94a3b8;">Visible coordinate system boundaries</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:12px;">
             <div>
-              <label style="font-size:11.5px;color:#94a3b8;display:block;margin-bottom:3px;">X-Min</label>
-              <input type="number" id="gos-xmin" value="${g.xMin}" style="width:100%;padding:7px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:#f8fafc;">
+              <label style="font-size:13px;color:#94a3b8;display:block;margin-bottom:4px;font-weight:600;">Domain Min (X-Min)</label>
+              <input type="number" step="0.5" id="gos-xmin" value="${g.xMin}" style="width:100%;height:44px;padding:0 14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.16);border-radius:8px;color:#f8fafc;font-size:15px;font-family:'JetBrains Mono',monospace;">
             </div>
             <div>
-              <label style="font-size:11.5px;color:#94a3b8;display:block;margin-bottom:3px;">X-Max</label>
-              <input type="number" id="gos-xmax" value="${g.xMax}" style="width:100%;padding:7px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:#f8fafc;">
+              <label style="font-size:13px;color:#94a3b8;display:block;margin-bottom:4px;font-weight:600;">Domain Max (X-Max)</label>
+              <input type="number" step="0.5" id="gos-xmax" value="${g.xMax}" style="width:100%;height:44px;padding:0 14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.16);border-radius:8px;color:#f8fafc;font-size:15px;font-family:'JetBrains Mono',monospace;">
             </div>
             <div>
-              <label style="font-size:11.5px;color:#94a3b8;display:block;margin-bottom:3px;">Y-Min</label>
-              <input type="number" id="gos-ymin" value="${g.yMin}" style="width:100%;padding:7px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:#f8fafc;">
+              <label style="font-size:13px;color:#94a3b8;display:block;margin-bottom:4px;font-weight:600;">Range Min (Y-Min)</label>
+              <input type="number" step="0.5" id="gos-ymin" value="${g.yMin}" style="width:100%;height:44px;padding:0 14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.16);border-radius:8px;color:#f8fafc;font-size:15px;font-family:'JetBrains Mono',monospace;">
             </div>
             <div>
-              <label style="font-size:11.5px;color:#94a3b8;display:block;margin-bottom:3px;">Y-Max</label>
-              <input type="number" id="gos-ymax" value="${g.yMax}" style="width:100%;padding:7px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:#f8fafc;">
+              <label style="font-size:13px;color:#94a3b8;display:block;margin-bottom:4px;font-weight:600;">Range Max (Y-Max)</label>
+              <input type="number" step="0.5" id="gos-ymax" value="${g.yMax}" style="width:100%;height:44px;padding:0 14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.16);border-radius:8px;color:#f8fafc;font-size:15px;font-family:'JetBrains Mono',monospace;">
             </div>
+          </div>
+          <!-- Quick Presets -->
+          <div style="display:flex;flex-wrap:wrap;gap:8px;">
+            <button type="button" class="gos-preset-chip" onclick="document.getElementById('gos-xmin').value='-10';document.getElementById('gos-xmax').value='10';document.getElementById('gos-ymin').value='-10';document.getElementById('gos-ymax').value='10';">Standard [-10, 10]</button>
+            <button type="button" class="gos-preset-chip" onclick="document.getElementById('gos-xmin').value='-6.28';document.getElementById('gos-xmax').value='6.28';document.getElementById('gos-ymin').value='-2.5';document.getElementById('gos-ymax').value='2.5';">Trigonometric [-2π, 2π]</button>
+            <button type="button" class="gos-preset-chip" onclick="document.getElementById('gos-xmin').value='-5';document.getElementById('gos-xmax').value='5';document.getElementById('gos-ymin').value='-5';document.getElementById('gos-ymax').value='5';">Compact [-5, 5]</button>
+            <button type="button" class="gos-preset-chip" onclick="document.getElementById('gos-xmin').value='0';document.getElementById('gos-xmax').value='10';document.getElementById('gos-ymin').value='0';document.getElementById('gos-ymax').value='10';">Quadrant I [0, 10]</button>
+            <button type="button" class="gos-preset-chip" onclick="document.getElementById('gos-xmin').value='-20';document.getElementById('gos-xmax').value='20';document.getElementById('gos-ymin').value='-20';document.getElementById('gos-ymax').value='20';">Wide [-20, 20]</button>
           </div>
         </div>
 
         <!-- Grid Options -->
         <div class="gos-param-card">
-          <strong style="color:#f8fafc;font-size:13.5px;display:block;margin-bottom:8px;">Grid &amp; Axis Visibility</strong>
-          <div style="display:flex;flex-direction:column;gap:8px;">
-            <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#cbd5e1;cursor:pointer;">
-              <input type="checkbox" id="gos-show-grid" ${g.showGrid ? 'checked' : ''}> Show Major Gridlines
+          <strong style="color:#f8fafc;font-size:15px;display:block;margin-bottom:10px;">Grid &amp; Axis Visibility</strong>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <label style="display:flex;align-items:center;gap:10px;font-size:14px;color:#cbd5e1;cursor:pointer;">
+              <input type="checkbox" id="gos-show-grid" ${g.showGrid ? 'checked' : ''} style="width:20px;height:20px;accent-color:#38bdf8;"> Show Major Gridlines
             </label>
-            <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#cbd5e1;cursor:pointer;">
-              <input type="checkbox" id="gos-show-minor-grid" ${g.showMinorGrid ? 'checked' : ''}> Show Minor Gridlines (High Precision)
+            <label style="display:flex;align-items:center;gap:10px;font-size:14px;color:#cbd5e1;cursor:pointer;">
+              <input type="checkbox" id="gos-show-minor-grid" ${g.showMinorGrid ? 'checked' : ''} style="width:20px;height:20px;accent-color:#38bdf8;"> Show Minor Precision Grid
             </label>
-            <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#cbd5e1;cursor:pointer;">
-              <input type="checkbox" id="gos-show-axes" ${g.showAxes ? 'checked' : ''}> Show X and Y Coordinate Axes &amp; Arrows
+            <label style="display:flex;align-items:center;gap:10px;font-size:14px;color:#cbd5e1;cursor:pointer;">
+              <input type="checkbox" id="gos-show-axes" ${g.showAxes ? 'checked' : ''} style="width:20px;height:20px;accent-color:#38bdf8;"> Show X &amp; Y Coordinate Axes
             </label>
-            <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#cbd5e1;cursor:pointer;">
-              <input type="checkbox" id="gos-show-labels" ${g.showLabels ? 'checked' : ''}> Show Numeric Axis Tick Numbers
+            <label style="display:flex;align-items:center;gap:10px;font-size:14px;color:#cbd5e1;cursor:pointer;">
+              <input type="checkbox" id="gos-show-labels" ${g.showLabels ? 'checked' : ''} style="width:20px;height:20px;accent-color:#38bdf8;"> Show Numeric Axis Numbers
             </label>
           </div>
         </div>
 
         <!-- Board Theme / Background Color Card -->
         <div class="gos-param-card">
-          <strong style="color:#f8fafc;font-size:13.5px;display:block;margin-bottom:6px;">Workspace Board Theme / Color</strong>
-          <div style="font-size:11.5px;color:#94a3b8;margin-bottom:10px;">Select the background theme for this graphing workspace just like a classroom smartboard:</div>
-          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <strong style="color:#f8fafc;font-size:15px;display:block;margin-bottom:6px;">Workspace Board Theme / Color</strong>
+          <div style="font-size:13px;color:#94a3b8;margin-bottom:12px;">Select the background theme for this graphing workspace just like a classroom smartboard:</div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;">
             ${BOARD_THEMES.map(bt => `
               <button class="gos-preset-chip gos-theme-swatch ${((g.bgColor || '#0b1120').toLowerCase() === bt.color.toLowerCase()) ? 'active' : ''}"
                 data-color="${bt.color}"
                 onclick="GraphObject.setBoardTheme('${bt.color}')"
-                style="display:flex;align-items:center;gap:7px;padding:6px 14px;font-size:12px;">
-                <span style="width:14px;height:14px;border-radius:50%;background:${bt.color};border:1px solid rgba(255,255,255,0.4);display:inline-block;"></span>
+                style="display:flex;align-items:center;gap:9px;padding:8px 18px;font-size:13.5px;min-height:42px;border-radius:10px;">
+                <span style="width:16px;height:16px;border-radius:50%;background:${bt.color};border:1.5px solid rgba(255,255,255,0.4);display:inline-block;"></span>
                 <span>${bt.name}</span>
               </button>
             `).join('')}
@@ -2837,10 +3908,25 @@ const GraphObject = (() => {
     handleSliderDrag,
     setLineColor,
     setBoardTheme,
+    openColorThemeModal,
+    closeColorThemeModal,
+    setEqColor,
+    openQuickAddEquation,
+    closeQuickCompareModal,
+    openQuickEditEquation,
+    openDomainRangeModal,
+    closeDomainRangeModal,
+    onDomainRangeTargetChange,
+    setFuncDomainPreset,
+    setFuncRangePreset,
+    applyDomainRange,
+    calculateAutoFitRange,
+    compile,
     BOARD_THEMES,
     LINE_COLORS,
     FUNCTION_FAMILIES,
-    getEditingGraph: () => editingGraph
+    getEditingGraph: () => editingGraph,
+    getModalTargetGraph: () => modalTargetGraph || editingGraph
   };
 
 })();

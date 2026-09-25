@@ -188,6 +188,22 @@ const WorkspaceSplit = (() => {
       }
     });
 
+    // Global keyboard shortcuts for split-screen navigation
+    window.addEventListener('keydown', (e) => {
+      // Esc key restores maximized partition
+      if (e.key === 'Escape' && maximizedPartitionId) {
+        toggleMaximize(maximizedPartitionId);
+        return;
+      }
+      // Alt + 1, 2, 3, 4 shortcuts
+      if (e.altKey && !e.ctrlKey && !e.metaKey) {
+        if (e.key === '1') { e.preventDefault(); setMode('normal'); }
+        else if (e.key === '2') { e.preventDefault(); setMode('split-2'); }
+        else if (e.key === '3') { e.preventDefault(); setMode('split-3'); }
+        else if (e.key === '4') { e.preventDefault(); setMode('split-4'); }
+      }
+    });
+
     // Close any floating shape pickers when clicking elsewhere
     document.addEventListener('pointerdown', (e) => {
       if (!e.target.closest('.wp-shape-menu') && !e.target.closest('.wp-btn-shapes')) {
@@ -202,8 +218,9 @@ const WorkspaceSplit = (() => {
   // MODE SWITCHING: Normal | 2 Partition | 4 Partition
   // ─────────────────────────────────────────────────────────────────────────────
 
-  function setMode(mode) {
-    if (mode === currentMode && !maximizedPartitionId) return;
+  function setMode(mode, ratio) {
+    if (ratio) splitRatio = ratio;
+    if (mode === currentMode && !maximizedPartitionId && !ratio) return;
     maximizedPartitionId = null;
     currentMode = mode;
 
@@ -213,6 +230,8 @@ const WorkspaceSplit = (() => {
       restoreNormalWorkspace();
     } else if (mode === 'split-2') {
       enterSplit2Mode();
+    } else if (mode === 'split-3') {
+      enterSplit3Mode();
     } else if (mode === 'split-4') {
       enterSplit4Mode();
     }
@@ -220,7 +239,8 @@ const WorkspaceSplit = (() => {
     if (typeof App !== 'undefined' && App.showToast) {
       const modeNames = {
         'normal': 'Single Workspace (Normal)',
-        'split-2': '2 Partition Mode (Side-by-Side)',
+        'split-2': splitRatio > 60 ? 'Lecture & Notes (70:30)' : '2 Partition (Side-by-Side)',
+        'split-3': '3 Partition Trio (1 Main + 2 Stacked)',
         'split-4': '4 Partition Mode (2×2 Grid)'
       };
       App.showToast(`📐 Workspace: ${modeNames[mode] || mode}`);
@@ -235,18 +255,63 @@ const WorkspaceSplit = (() => {
     return splitRatio;
   }
 
+  function setSplitRatio(ratio) {
+    splitRatio = Math.max(20, Math.min(80, ratio));
+    if (currentMode === 'split-2' && containerEl) {
+      const p1El = containerEl.querySelector('.workspace-partition[data-pid="1"]');
+      if (p1El) {
+        p1El.style.flex = `0 0 calc(${splitRatio}% - 4px)`;
+        p1El.style.width = `calc(${splitRatio}% - 4px)`;
+        resizeAllPartitions();
+      }
+    }
+  }
+
+  function applyPreset(presetName) {
+    if (presetName === 'math-graph') {
+      partitions[0].type = 'whiteboard';
+      partitions[1].type = 'graph2d';
+      splitRatio = 50;
+      setMode('split-2');
+      if (typeof App !== 'undefined' && App.showToast) App.showToast('📊 Loaded Math & Graph Studio');
+    } else if (presetName === 'lecture-notes') {
+      partitions[0].type = 'ppt';
+      partitions[1].type = 'whiteboard';
+      splitRatio = 70;
+      setMode('split-2');
+      if (typeof App !== 'undefined' && App.showToast) App.showToast('📽️ Loaded Lecture & Notes Preset (70:30)');
+    } else if (presetName === 'trio-lab') {
+      partitions[0].type = 'whiteboard';
+      partitions[1].type = 'graph2d';
+      partitions[2].type = 'geometry';
+      setMode('split-3');
+      if (typeof App !== 'undefined' && App.showToast) App.showToast('🔬 Loaded STEM Lab Trio (3-Split)');
+    } else if (presetName === 'quad-math') {
+      for (let i = 0; i < 4; i++) {
+        partitions[i].type = 'whiteboard';
+      }
+      setMode('split-4');
+      if (typeof App !== 'undefined' && App.showToast) App.showToast('📐 Loaded Quad Math Lab (4-Split)');
+    }
+  }
+
   function updateTopSplitButton() {
     const label = document.getElementById('top-split-label');
     if (label) {
       if (currentMode === 'normal') label.textContent = 'Workspace';
-      else if (currentMode === 'split-2') label.textContent = '2 Split';
+      else if (currentMode === 'split-2') label.textContent = splitRatio > 60 ? '70:30 Split' : '2 Split';
+      else if (currentMode === 'split-3') label.textContent = '3 Split';
       else if (currentMode === 'split-4') label.textContent = '4 Split';
     }
 
     document.querySelectorAll('.split-dd-menu .dd-item').forEach(btn => {
       btn.classList.remove('active');
     });
-    const activeBtn = document.getElementById(`split-menu-${currentMode === 'normal' ? 'normal' : (currentMode === 'split-2' ? '2' : '4')}`);
+    let activeId = 'normal';
+    if (currentMode === 'split-2') activeId = splitRatio > 60 ? '70-30' : '2';
+    else if (currentMode === 'split-3') activeId = '3';
+    else if (currentMode === 'split-4') activeId = '4';
+    const activeBtn = document.getElementById(`split-menu-${activeId}`);
     if (activeBtn) activeBtn.classList.add('active');
   }
 
@@ -258,6 +323,9 @@ const WorkspaceSplit = (() => {
     if (!containerEl) return;
     containerEl.classList.add('hidden');
     containerEl.innerHTML = '';
+
+    const zoomW = document.getElementById('board-zoom-widget');
+    if (zoomW) zoomW.style.display = '';
 
     if (mainZoneEl) {
       mainZoneEl.classList.remove('in-partition');
@@ -281,9 +349,12 @@ const WorkspaceSplit = (() => {
 
   function enterSplit2Mode() {
     if (!containerEl) return;
-    containerEl.classList.remove('hidden', 'split-4');
+    containerEl.classList.remove('hidden', 'split-3', 'split-4');
     containerEl.classList.add('split-2');
     containerEl.innerHTML = '';
+
+    const zoomW = document.getElementById('board-zoom-widget');
+    if (zoomW) zoomW.style.display = 'none';
 
     const p1El = createPartitionElement(partitions[0], 1);
     p1El.style.flex = `0 0 calc(${splitRatio}% - 4px)`;
@@ -301,7 +372,35 @@ const WorkspaceSplit = (() => {
     mountPartitionContent(partitions[0], p1El);
     mountPartitionContent(partitions[1], p2El);
 
+    partitions.forEach(p => syncPartitionWithApp(p));
+
     setActivePartition(activePartitionId <= 2 ? activePartitionId : 1);
+    resizeAllPartitions();
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // 3 PARTITION MODE (1 Main Left + 2 Stacked Right)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  function enterSplit3Mode() {
+    if (!containerEl) return;
+    containerEl.classList.remove('hidden', 'split-2', 'split-4');
+    containerEl.classList.add('split-3');
+    containerEl.innerHTML = '';
+
+    const zoomW = document.getElementById('board-zoom-widget');
+    if (zoomW) zoomW.style.display = 'none';
+
+    for (let i = 0; i < 3; i++) {
+      const p = partitions[i];
+      const pEl = createPartitionElement(p, i + 1);
+      containerEl.appendChild(pEl);
+      mountPartitionContent(p, pEl);
+    }
+
+    partitions.forEach(p => syncPartitionWithApp(p));
+
+    setActivePartition(activePartitionId <= 3 ? activePartitionId : 1);
     resizeAllPartitions();
   }
 
@@ -311,9 +410,12 @@ const WorkspaceSplit = (() => {
 
   function enterSplit4Mode() {
     if (!containerEl) return;
-    containerEl.classList.remove('hidden', 'split-2');
+    containerEl.classList.remove('hidden', 'split-2', 'split-3');
     containerEl.classList.add('split-4');
     containerEl.innerHTML = '';
+
+    const zoomW = document.getElementById('board-zoom-widget');
+    if (zoomW) zoomW.style.display = 'none';
 
     for (let i = 0; i < 4; i++) {
       const p = partitions[i];
@@ -321,6 +423,8 @@ const WorkspaceSplit = (() => {
       containerEl.appendChild(pEl);
       mountPartitionContent(p, pEl);
     }
+
+    partitions.forEach(p => syncPartitionWithApp(p));
 
     setActivePartition(activePartitionId);
     resizeAllPartitions();
@@ -421,24 +525,24 @@ const WorkspaceSplit = (() => {
 
     header.innerHTML = `
       <div class="wp-header-left">
-        <span class="wp-badge">P${id}</span>
+        <span class="wp-badge"><span class="wp-badge-dot"></span> P${id}</span>
         <div class="wp-content-selector-wrap">
           <select class="wp-content-select" onchange="WorkspaceSplit.changePartitionContent(${id}, this.value)" title="Choose workspace tool">
-            <option value="whiteboard" ${p.type === 'whiteboard' ? 'selected' : ''}>✏️ Smart Whiteboard</option>
-            <option value="graph2d" ${p.type === 'graph2d' ? 'selected' : ''}>📈 2D Graphable</option>
+            <option value="whiteboard" ${p.type === 'whiteboard' ? 'selected' : ''}>✏️ Whiteboard</option>
+            <option value="graph2d" ${p.type === 'graph2d' ? 'selected' : ''}>📈 2D Grapher</option>
             <option value="ppt" ${p.type === 'ppt' ? 'selected' : ''}>📽️ PPT / PDF</option>
-            <option value="geometry" ${p.type === 'geometry' ? 'selected' : ''}>📐 Geometry Lab</option>
+            <option value="geometry" ${p.type === 'geometry' ? 'selected' : ''}>📐 Geometry</option>
             <option value="simulation" ${p.type === 'simulation' ? 'selected' : ''}>⚡ Physics Lab</option>
           </select>
         </div>
 
-        <!-- Mode Switcher Pill (Draw/Annotate vs Pan/Interact) -->
+        <!-- Compact Micro Mode Switcher Pill -->
         <div class="wp-mode-pill-wrap" id="wp-mode-pill-${id}">
-          <button class="wp-mode-pill-btn ${p.mode === 'draw' ? 'active' : ''}" onclick="WorkspaceSplit.setPartitionMode(${id}, 'draw')" title="Pen Drawing & Annotation Mode">
-            ✏️ Draw
+          <button class="wp-mode-pill-btn ${p.mode === 'draw' ? 'active' : ''}" onclick="WorkspaceSplit.setPartitionMode(${id}, 'draw')" title="Pen Drawing Mode (All main toolbar tools draw here)">
+            ✏️
           </button>
           <button class="wp-mode-pill-btn ${p.mode === 'interact' ? 'active' : ''}" onclick="WorkspaceSplit.setPartitionMode(${id}, 'interact')" title="Pan, Zoom & Widget Interaction Mode">
-            ✋ Interact
+            ✋
           </button>
         </div>
       </div>
@@ -448,6 +552,9 @@ const WorkspaceSplit = (() => {
       </div>
 
       <div class="wp-header-right">
+        <button class="wp-restore-banner" onclick="WorkspaceSplit.toggleMaximize(${id})" title="Restore Split View (Esc)">
+          ⤡ Restore <kbd>Esc</kbd>
+        </button>
         ${currentMode === 'split-2' ? `
           <button class="wp-action-btn" onclick="WorkspaceSplit.swapPartitions(1, 2)" title="Swap Partition 1 ⇄ Partition 2">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M7 16V4m0 0L3 8m4-4l4 4m6 4v12m0 0l4-4m-4 4l-4-4"/></svg>
@@ -526,135 +633,23 @@ const WorkspaceSplit = (() => {
     setupUniversalDrawingEvents(p, drawCv);
     redrawPartitionStrokes(p, drawCv);
 
-    // 3. Floating Smart Tool Palette (Primary Board Resource Parity)
+    // Independent partition tools removed per user request:
+    // All partitions now work via the main tools bar.
     renderSmartPalette(p, body);
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // PARTITION SMART TOOL PALETTE (Docked / Floating inside each partition)
+  // PARTITION TOOLS CLEANUP (Palette removed, tools unified to main toolbar)
   // ─────────────────────────────────────────────────────────────────────────────
 
   function renderSmartPalette(p, bodyEl) {
-    let palEl = bodyEl.querySelector(`#wp-smart-palette-${p.id}`);
-    if (!palEl) {
-      palEl = document.createElement('div');
-      palEl.className = `wp-smart-palette ${p.paletteCollapsed ? 'collapsed' : ''}`;
-      palEl.id = `wp-smart-palette-${p.id}`;
-      bodyEl.appendChild(palEl);
-    }
-
-    const id = p.id;
-    const isDraw = (p.mode === 'draw');
-
-    if (p.paletteCollapsed) {
-      palEl.innerHTML = `
-        <button class="wp-sp-expand-btn" onclick="WorkspaceSplit.togglePaletteCollapse(${id})" title="Expand Partition Tools">
-          <span>✏️</span>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><path d="M5 15l7-7 7 7"/></svg>
-        </button>
-      `;
-      return;
-    }
-
-    palEl.innerHTML = `
-      <div class="wp-sp-container">
-        <!-- Tools Group -->
-        <div class="wp-sp-group wp-sp-tools">
-          <button class="wp-sp-btn ${isDraw && p.tool === 'pen' ? 'active' : ''}" onclick="WorkspaceSplit.setPartitionTool(${id}, 'pen')" title="Pen (P)">
-            ✏️
-          </button>
-          <button class="wp-sp-btn ${isDraw && p.tool === 'highlighter' ? 'active' : ''}" onclick="WorkspaceSplit.setPartitionTool(${id}, 'highlighter')" title="Highlighter (H)">
-            🖍️
-          </button>
-          <button class="wp-sp-btn ${isDraw && p.tool === 'eraser' ? 'active' : ''}" onclick="WorkspaceSplit.setPartitionTool(${id}, 'eraser')" title="Eraser (E)">
-            🧹
-          </button>
-          <div class="wp-sp-shape-wrap">
-            <button class="wp-sp-btn wp-btn-shapes ${isDraw && p.tool === 'shape' ? 'active' : ''}" onclick="WorkspaceSplit.toggleShapeSelector(${id}, event)" title="Shapes & Vectors (S)">
-              📐
-            </button>
-            <div class="wp-shape-menu hidden" id="wp-shape-menu-${id}">
-              <button onclick="WorkspaceSplit.setPartitionShape(${id}, 'line')">Line ──</button>
-              <button onclick="WorkspaceSplit.setPartitionShape(${id}, 'arrow')">Arrow ──►</button>
-              <button onclick="WorkspaceSplit.setPartitionShape(${id}, 'rect')">Box ▭</button>
-              <button onclick="WorkspaceSplit.setPartitionShape(${id}, 'circle')">Circle ◯</button>
-              <button onclick="WorkspaceSplit.setPartitionShape(${id}, 'triangle')">Triangle △</button>
-              <button onclick="WorkspaceSplit.setPartitionShape(${id}, 'axes')">Axes ┼</button>
-            </div>
-          </div>
-          <button class="wp-sp-btn ${isDraw && p.tool === 'text' ? 'active' : ''}" onclick="WorkspaceSplit.setPartitionTool(${id}, 'text')" title="Text Annotation (T)">
-            🔤
-          </button>
-          <button class="wp-sp-btn ${!isDraw ? 'active' : ''}" onclick="WorkspaceSplit.setPartitionMode(${id}, 'interact')" title="Pan & Interact (✋)">
-            ✋
-          </button>
-        </div>
-
-        <div class="wp-sp-divider"></div>
-
-        <!-- Pen / Eraser Size Group -->
-        <div class="wp-sp-group wp-sp-sizes">
-          <button class="wp-sp-size-btn ${p.size === 2 ? 'active' : ''}" onclick="WorkspaceSplit.setPartitionSize(${id}, 2)" title="Fine Nib (2px)">
-            <span class="wp-nib-dot" style="width:3px;height:3px;"></span>
-          </button>
-          <button class="wp-sp-size-btn ${p.size === 6 ? 'active' : ''}" onclick="WorkspaceSplit.setPartitionSize(${id}, 6)" title="Medium Nib (6px)">
-            <span class="wp-nib-dot" style="width:6px;height:6px;"></span>
-          </button>
-          <button class="wp-sp-size-btn ${p.size === 12 ? 'active' : ''}" onclick="WorkspaceSplit.setPartitionSize(${id}, 12)" title="Broad Nib (12px)">
-            <span class="wp-nib-dot" style="width:10px;height:10px;"></span>
-          </button>
-        </div>
-
-        <div class="wp-sp-divider"></div>
-
-        <!-- 8-Color Palette (Primary Board Parity) -->
-        <div class="wp-sp-group wp-sp-colors">
-          ${PALETTE_COLORS.map(c => `
-            <span class="wp-sp-color-dot ${p.color.toLowerCase() === c.toLowerCase() ? 'active' : ''}"
-                  style="background:${c}; ${c === '#f8fafc' ? 'box-shadow:inset 0 0 0 1px rgba(0,0,0,0.25);' : ''}"
-                  onclick="WorkspaceSplit.setPartitionColor(${id}, '${c}')"
-                  title="Color: ${c}"></span>
-          `).join('')}
-        </div>
-
-        <div class="wp-sp-divider"></div>
-
-        <!-- Undo, Redo, Clear -->
-        <div class="wp-sp-group wp-sp-actions">
-          <button class="wp-sp-btn" onclick="WorkspaceSplit.undoPartition(${id})" title="Undo (Ctrl+Z)">
-            ↩️
-          </button>
-          <button class="wp-sp-btn" onclick="WorkspaceSplit.redoPartition(${id})" title="Redo (Ctrl+Y)">
-            ↪️
-          </button>
-          <button class="wp-sp-btn" onclick="WorkspaceSplit.clearPartition(${id})" title="Clear Partition">
-            🗑️
-          </button>
-          <button class="wp-sp-collapse-toggle" onclick="WorkspaceSplit.togglePaletteCollapse(${id})" title="Collapse Tools (▾)">
-            ▾
-          </button>
-        </div>
-      </div>
-    `;
+    if (!bodyEl) return;
+    const palEl = bodyEl.querySelector(`.wp-smart-palette`);
+    if (palEl) palEl.remove();
   }
 
-  function togglePaletteCollapse(id) {
-    const p = partitions.find(item => item.id === id);
-    if (!p) return;
-    p.paletteCollapsed = !p.paletteCollapsed;
-    const bodyEl = containerEl.querySelector(`#wp-body-${id}`);
-    if (bodyEl) renderSmartPalette(p, bodyEl);
-  }
-
-  function toggleShapeSelector(id, event) {
-    if (event) {
-      event.preventDefault();
-      event.stopPropagation();
-    }
-    setPartitionTool(id, 'shape');
-    const menu = containerEl.querySelector(`#wp-shape-menu-${id}`);
-    if (menu) menu.classList.toggle('hidden');
-  }
+  function togglePaletteCollapse(id) {}
+  function toggleShapeSelector(id, event) {}
 
   function setPartitionShape(id, shape) {
     const p = partitions.find(item => item.id === id);
@@ -663,8 +658,6 @@ const WorkspaceSplit = (() => {
     p.tool = 'shape';
     p.mode = 'draw';
     syncPartitionModeUI(p);
-    const bodyEl = containerEl.querySelector(`#wp-body-${id}`);
-    if (bodyEl) renderSmartPalette(p, bodyEl);
 
     if (typeof App !== 'undefined' && App.showToast) {
       App.showToast(`P${id} Shape: ${shape.toUpperCase()}`);
@@ -682,6 +675,12 @@ const WorkspaceSplit = (() => {
     let currentStroke = [];
 
     cv.addEventListener('pointerdown', (e) => {
+      // Activating this partition if not already active
+      if (activePartitionId !== p.id) {
+        setActivePartition(p.id);
+      }
+      syncPartitionWithApp(p);
+
       if (p.mode !== 'draw') return;
       e.preventDefault();
       e.stopPropagation();
@@ -732,18 +731,22 @@ const WorkspaceSplit = (() => {
 
       const ctx = cv.getContext('2d');
       ctx.save();
+      const curColor = (typeof App !== 'undefined' && App.currentColor) ? App.currentColor : (p.color || '#0f172a');
+      const curPenSize = (typeof App !== 'undefined' && App.penSize) ? App.penSize : (p.size || 3);
+      const curEraserSize = (typeof App !== 'undefined' && App.eraserSize) ? App.eraserSize : (p.eraserSize || 26);
+
       if (p.tool === 'eraser') {
         ctx.globalCompositeOperation = 'destination-out';
         ctx.strokeStyle = 'rgba(0,0,0,1)';
-        ctx.lineWidth = p.eraserSize || 26;
+        ctx.lineWidth = curEraserSize;
       } else if (p.tool === 'highlighter') {
         ctx.globalCompositeOperation = 'source-over';
-        ctx.strokeStyle = hexToRgba(p.color || '#f59e0b', 0.35);
+        ctx.strokeStyle = hexToRgba(curColor, 0.35);
         ctx.lineWidth = 20;
       } else {
         ctx.globalCompositeOperation = 'source-over';
-        ctx.strokeStyle = p.color || '#0f172a';
-        ctx.lineWidth = p.size || 3;
+        ctx.strokeStyle = curColor;
+        ctx.lineWidth = curPenSize;
       }
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
@@ -765,6 +768,10 @@ const WorkspaceSplit = (() => {
       const endX = e.clientX - rect.left;
       const endY = e.clientY - rect.top;
 
+      const curColor = (typeof App !== 'undefined' && App.currentColor) ? App.currentColor : (p.color || '#0f172a');
+      const curPenSize = (typeof App !== 'undefined' && App.penSize) ? App.penSize : (p.size || 3);
+      const curEraserSize = (typeof App !== 'undefined' && App.eraserSize) ? App.eraserSize : (p.eraserSize || 26);
+
       // Save previous state to undo stack
       p.undoStack.push([...p.strokes]);
       if (p.undoStack.length > 50) p.undoStack.shift();
@@ -775,8 +782,8 @@ const WorkspaceSplit = (() => {
           p.strokes.push({
             tool: 'shape',
             shapeType: p.shapeType || 'rect',
-            color: p.color,
-            size: p.size || 3,
+            color: curColor,
+            size: curPenSize,
             start: { ...startPoint },
             end: { x: endX, y: endY }
           });
@@ -785,12 +792,14 @@ const WorkspaceSplit = (() => {
       } else if (currentStroke.length > 0) {
         p.strokes.push({
           tool: p.tool,
-          color: p.color,
-          size: p.size,
-          eraserSize: p.eraserSize,
+          color: curColor,
+          size: curPenSize,
+          eraserSize: curEraserSize,
           points: [...currentStroke]
         });
       }
+      currentStroke = [];
+      startPoint = null;
     };
 
     cv.addEventListener('pointerup', finish);
@@ -801,9 +810,12 @@ const WorkspaceSplit = (() => {
     if (!cv || !start || !current) return;
     const ctx = cv.getContext('2d');
     ctx.save();
-    ctx.strokeStyle = p.color || '#0f172a';
-    ctx.fillStyle = hexToRgba(p.color || '#0f172a', 0.12);
-    ctx.lineWidth = p.size || 3;
+    const curColor = (typeof App !== 'undefined' && App.currentColor) ? App.currentColor : (p.color || '#0f172a');
+    const curPenSize = (typeof App !== 'undefined' && App.penSize) ? App.penSize : (p.size || 3);
+
+    ctx.strokeStyle = curColor;
+    ctx.fillStyle = hexToRgba(curColor, 0.12);
+    ctx.lineWidth = curPenSize;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
@@ -819,6 +831,7 @@ const WorkspaceSplit = (() => {
 
     switch (shapeType) {
       case 'line':
+      case 'measure-line':
         ctx.beginPath();
         ctx.moveTo(x1, y1);
         ctx.lineTo(x2, y2);
@@ -830,19 +843,33 @@ const WorkspaceSplit = (() => {
         ctx.moveTo(x1, y1);
         ctx.lineTo(x2, y2);
         ctx.stroke();
-        // Arrow head
-        const angle = Math.atan2(y2 - y1, x2 - x1);
-        const headLen = 14;
-        ctx.beginPath();
-        ctx.moveTo(x2, y2);
-        ctx.lineTo(x2 - headLen * Math.cos(angle - Math.PI / 6), y2 - headLen * Math.sin(angle - Math.PI / 6));
-        ctx.lineTo(x2 - headLen * Math.cos(angle + Math.PI / 6), y2 - headLen * Math.sin(angle + Math.PI / 6));
-        ctx.closePath();
-        ctx.fillStyle = ctx.strokeStyle;
-        ctx.fill();
+        {
+          const angle = Math.atan2(y2 - y1, x2 - x1);
+          const headLen = 14;
+          ctx.beginPath();
+          ctx.moveTo(x2, y2);
+          ctx.lineTo(x2 - headLen * Math.cos(angle - Math.PI / 6), y2 - headLen * Math.sin(angle - Math.PI / 6));
+          ctx.lineTo(x2 - headLen * Math.cos(angle + Math.PI / 6), y2 - headLen * Math.sin(angle + Math.PI / 6));
+          ctx.closePath();
+          ctx.fillStyle = ctx.strokeStyle;
+          ctx.fill();
+        }
         break;
 
+      case 'square': {
+        const side = Math.min(Math.abs(w), Math.abs(h));
+        const sx = x1 + (w < 0 ? -side : 0);
+        const sy = y1 + (h < 0 ? -side : 0);
+        ctx.beginPath();
+        ctx.roundRect(sx, sy, side, side, 4);
+        ctx.fill();
+        ctx.stroke();
+        break;
+      }
+
       case 'rect':
+      case 'rectangle':
+      case 'box':
         ctx.beginPath();
         ctx.roundRect(Math.min(x1, x2), Math.min(y1, y2), Math.abs(w), Math.abs(h), 6);
         ctx.fill();
@@ -850,6 +877,20 @@ const WorkspaceSplit = (() => {
         break;
 
       case 'circle':
+      case 'compass': {
+        const rx = Math.abs(w) / 2;
+        const ry = Math.abs(h) / 2;
+        const r = Math.min(rx, ry);
+        const cx = Math.min(x1, x2) + rx;
+        const cy = Math.min(y1, y2) + ry;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        break;
+      }
+
+      case 'ellipse': {
         const rx = Math.abs(w) / 2;
         const ry = Math.abs(h) / 2;
         const cx = Math.min(x1, x2) + rx;
@@ -859,8 +900,35 @@ const WorkspaceSplit = (() => {
         ctx.fill();
         ctx.stroke();
         break;
+      }
+
+      case 'semicircle': {
+        const rx = Math.abs(w) / 2;
+        const cx = Math.min(x1, x2) + rx;
+        const cy = y2;
+        ctx.beginPath();
+        ctx.arc(cx, cy, rx, Math.PI, 0, false);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        break;
+      }
+
+      case 'sector': {
+        const rx = Math.abs(w) / 2;
+        const cx = Math.min(x1, x2) + rx;
+        const cy = y2;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.arc(cx, cy, rx, -Math.PI / 2, 0, false);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        break;
+      }
 
       case 'triangle':
+      case 'equilateral':
         ctx.beginPath();
         ctx.moveTo(x1 + w / 2, y1);
         ctx.lineTo(x1, y2);
@@ -869,6 +937,139 @@ const WorkspaceSplit = (() => {
         ctx.fill();
         ctx.stroke();
         break;
+
+      case 'rightTriangle':
+      case 'right-triangle': {
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x1, y2);
+        ctx.lineTo(x2, y2);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        const corner = Math.min(16, Math.abs(w) * 0.2, Math.abs(h) * 0.2);
+        if (corner > 4) {
+          ctx.beginPath();
+          ctx.rect(x1, y2 - corner, corner, corner);
+          ctx.stroke();
+        }
+        break;
+      }
+
+      case 'parallelogram': {
+        const offset = w * 0.25;
+        ctx.beginPath();
+        ctx.moveTo(x1 + offset, y1);
+        ctx.lineTo(x2, y1);
+        ctx.lineTo(x2 - offset, y2);
+        ctx.lineTo(x1, y2);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        break;
+      }
+
+      case 'trapezium': {
+        const inset = Math.abs(w) * 0.2;
+        ctx.beginPath();
+        ctx.moveTo(x1 + inset, y1);
+        ctx.lineTo(x2 - inset, y1);
+        ctx.lineTo(x2, y2);
+        ctx.lineTo(x1, y2);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        break;
+      }
+
+      case 'rhombus':
+      case 'diamond':
+      case 'kite':
+        ctx.beginPath();
+        ctx.moveTo(x1 + w / 2, y1);
+        ctx.lineTo(x2, y1 + h / 2);
+        ctx.lineTo(x1 + w / 2, y2);
+        ctx.lineTo(x1, y1 + h / 2);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        break;
+
+      case 'pentagon': {
+        const cx = x1 + w / 2, cy = y1 + h / 2;
+        const r = Math.min(Math.abs(w), Math.abs(h)) / 2;
+        ctx.beginPath();
+        for (let i = 0; i < 5; i++) {
+          const a = -Math.PI / 2 + (i * 2 * Math.PI) / 5;
+          const px = cx + r * Math.cos(a);
+          const py = cy + r * Math.sin(a);
+          if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        break;
+      }
+
+      case 'hexagon': {
+        const cx = x1 + w / 2, cy = y1 + h / 2;
+        const r = Math.min(Math.abs(w), Math.abs(h)) / 2;
+        ctx.beginPath();
+        for (let i = 0; i < 6; i++) {
+          const a = (i * 2 * Math.PI) / 6;
+          const px = cx + r * Math.cos(a);
+          const py = cy + r * Math.sin(a);
+          if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        break;
+      }
+
+      case 'octagon': {
+        const cx = x1 + w / 2, cy = y1 + h / 2;
+        const r = Math.min(Math.abs(w), Math.abs(h)) / 2;
+        ctx.beginPath();
+        for (let i = 0; i < 8; i++) {
+          const a = (i * 2 * Math.PI) / 8 + Math.PI / 8;
+          const px = cx + r * Math.cos(a);
+          const py = cy + r * Math.sin(a);
+          if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        break;
+      }
+
+      case 'cube':
+      case 'cuboid': {
+        const d = Math.min(Math.abs(w), Math.abs(h)) * 0.25;
+        const rw = Math.abs(w) - d;
+        const rh = Math.abs(h) - d;
+        const minX = Math.min(x1, x2);
+        const minY = Math.min(y1, y2) + d;
+        ctx.beginPath();
+        ctx.rect(minX, minY, rw, rh);
+        ctx.fill();
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(minX, minY);
+        ctx.lineTo(minX + d, minY - d);
+        ctx.lineTo(minX + rw + d, minY - d);
+        ctx.lineTo(minX + rw, minY);
+        ctx.closePath();
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(minX + rw, minY);
+        ctx.lineTo(minX + rw + d, minY - d);
+        ctx.lineTo(minX + rw + d, minY + rh - d);
+        ctx.lineTo(minX + rw, minY + rh);
+        ctx.closePath();
+        ctx.stroke();
+        break;
+      }
 
       case 'axes':
         ctx.beginPath();
@@ -879,10 +1080,62 @@ const WorkspaceSplit = (() => {
         ctx.stroke();
         break;
 
+      case 'number-line': {
+        ctx.beginPath();
+        ctx.moveTo(x1, y1 + h / 2);
+        ctx.lineTo(x2, y1 + h / 2);
+        const numTicks = 6;
+        for (let i = 0; i <= numTicks; i++) {
+          const tx = x1 + (w * i) / numTicks;
+          ctx.moveTo(tx, y1 + h / 2 - 6);
+          ctx.lineTo(tx, y1 + h / 2 + 6);
+        }
+        ctx.stroke();
+        break;
+      }
+
       default:
         ctx.beginPath();
         ctx.rect(Math.min(x1, x2), Math.min(y1, y2), Math.abs(w), Math.abs(h));
         ctx.stroke();
+    }
+  }
+
+  function addShapeToActive(shapeType) {
+    const p = getActivePartition();
+    if (!p) return;
+    const cv = containerEl.querySelector(`#wp-draw-${p.id}`);
+    const rect = cv ? cv.getBoundingClientRect() : { width: 400, height: 300 };
+    const w = rect.width || 400;
+    const h = rect.height || 300;
+    const size = Math.min(w, h) * 0.4;
+    const cx = w / 2;
+    const cy = h / 2;
+
+    const curColor = (typeof App !== 'undefined' && App.currentColor) ? App.currentColor : (p.color || '#2563eb');
+    const curPenSize = (typeof App !== 'undefined' && App.penSize) ? App.penSize : (p.size || 3);
+
+    p.undoStack.push([...p.strokes]);
+    p.redoStack = [];
+
+    p.strokes.push({
+      tool: 'shape',
+      shapeType: shapeType || 'rect',
+      color: curColor,
+      size: curPenSize,
+      start: { x: cx - size / 2, y: cy - size / 2 },
+      end: { x: cx + size / 2, y: cy + size / 2 }
+    });
+
+    p.tool = 'shape';
+    p.shapeType = shapeType;
+    p.mode = 'draw';
+    syncPartitionModeUI(p);
+
+    if (cv) redrawPartitionStrokes(p, cv);
+
+    if (typeof App !== 'undefined' && App.showToast) {
+      App.showToast(`P${p.id}: Added ${(shapeType || 'shape').toUpperCase()}`);
     }
   }
 
@@ -893,16 +1146,18 @@ const WorkspaceSplit = (() => {
     p.undoStack.push([...p.strokes]);
     p.redoStack = [];
 
+    const curColor = (typeof App !== 'undefined' && App.currentColor) ? App.currentColor : (p.color || '#0f172a');
+    const curSize = (typeof App !== 'undefined' && App.penSize) ? App.penSize : (p.size || 3);
+
     p.strokes.push({
       tool: 'text',
       text: text.trim(),
-      color: p.color || '#0f172a',
-      size: p.size || 3,
+      color: curColor,
+      size: curSize,
       x, y
     });
 
     const cv = containerEl.querySelector(`#wp-draw-${p.id}`);
-    if (cv) redrawPartitionStrokes(p, cv);
   }
 
   function redrawPartitionStrokes(p, cv) {
@@ -1328,39 +1583,154 @@ const WorkspaceSplit = (() => {
   // 2. 2D GRAPHABLE WORKSPACE ENGINE
   // ─────────────────────────────────────────────────────────────────────────────
 
+  const SPLIT_LINE_COLORS = ['#38bdf8', '#facc15', '#22c55e', '#f97316', '#f43f5e', '#a855f7', '#ffffff'];
+  const SPLIT_BOARD_THEMES = [
+    { id: 'navy', name: 'Navy', color: '#0b1329' },
+    { id: 'green', name: 'Green', color: '#0c2e22' },
+    { id: 'white', name: 'White', color: '#ffffff' },
+    { id: 'slate', name: 'Slate', color: '#18181b' },
+    { id: 'blueprint', name: 'Blueprint', color: '#0f2b48' },
+    { id: 'black', name: 'Black', color: '#000000' }
+  ];
+
   function mountGraphContent(p, container) {
     const id = p.id;
+    p.graphState = p.graphState || {
+      familyId: 'quadratic',
+      expr: 'x²',
+      a: 1, b: 1, h: 0, k: 0,
+      ghostParent: true,
+      color: '#38bdf8',
+      boardBg: '#0b1329',
+      zoom: 1,
+      panX: 0, panY: 0,
+      f1DomMin: null, f1DomMax: null,
+      f1RngMin: null, f1RngMax: null,
+      f2DomMin: null, f2DomMax: null
+    };
+    if (p.graphState.boardBg === undefined) p.graphState.boardBg = '#0b1329';
+    if (p.graphState.compareEnabled === undefined) p.graphState.compareEnabled = false;
+    if (!p.graphState.compareExpr) p.graphState.compareExpr = '2*x - 1';
+    if (!p.graphState.compareColor) p.graphState.compareColor = '#facc15';
+
+    const activeBg = (p.graphState.boardBg || '#0b1329').toLowerCase();
+    const activeLine1 = (p.graphState.color || '#38bdf8').toLowerCase();
+    const activeLine2 = (p.graphState.compareColor || '#facc15').toLowerCase();
+
     container.innerHTML = `
       <div class="wp-graph-workspace">
         <canvas class="wp-graph-canvas" id="wp-graph-cv-${id}"></canvas>
         <div class="wp-graph-controls-panel">
-          <div class="wp-graph-param-row">
-            <span class="wp-param-lbl">Function:</span>
-            <input type="text" class="wp-graph-eq-input" id="wp-eq-input-${id}" value="${p.graphState.expr}" onchange="WorkspaceSplit.updateGraphEquation(${id}, this.value)" title="Type mathematical formula (e.g. sin(x), x^2, e^x)">
-            <span class="wp-graph-color-picker-wrap">
-              <span class="wp-dot" style="background:${p.graphState.color || '#38bdf8'};" title="Curve Line Color"></span>
-            </span>
+          <!-- Row 1: Function f1(x), Line Colors, Function Domain & Range -->
+          <div class="wp-graph-param-row" style="flex-wrap:wrap; gap:8px;">
+            <span class="wp-param-lbl" style="color:${p.graphState.color || '#38bdf8'}; font-weight:700;">f₁(x):</span>
+            <input type="text" class="wp-graph-eq-input" id="wp-eq-input-${id}" value="${p.graphState.expr}" onchange="WorkspaceSplit.updateGraphEquation(${id}, this.value)" title="Type mathematical formula (e.g. sin(x), x^2, e^x)" style="min-width:130px; max-width:220px;">
+
+            <!-- Line 1 Color Picker -->
+            <div style="display:inline-flex; align-items:center; gap:4px;" title="Function 1 Line Color">
+              ${SPLIT_LINE_COLORS.map(c => `
+                <button type="button" onclick="WorkspaceSplit.setGraphLineColor(${id}, '${c}')" 
+                  style="width:20px; height:20px; border-radius:50%; background:${c}; border:${c.toLowerCase() === activeLine1 ? '2px solid #ffffff' : '1px solid rgba(255,255,255,0.25)'}; cursor:pointer; padding:0; outline:none; box-shadow:${c.toLowerCase() === activeLine1 ? '0 0 6px ' + c : 'none'};">
+                </button>
+              `).join('')}
+            </div>
+
+            <!-- Function Domain Restrictions (x in [min, max]) -->
+            <div class="wp-graph-dr-presets" style="background:rgba(255,255,255,0.04); padding:3px 8px; border-radius:8px; display:inline-flex; align-items:center; gap:5px;" title="Restrict function evaluation domain">
+              <span class="wp-dr-lbl" style="color:#38bdf8;">D: [</span>
+              <input type="number" step="0.5" id="wp-f1-dmin-${id}" value="${p.graphState.f1DomMin !== null && p.graphState.f1DomMin !== undefined ? p.graphState.f1DomMin : ''}" placeholder="-∞" style="width:48px; height:26px; text-align:center; font-family:var(--mono); font-size:12px; font-weight:700; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.2); color:#f8fafc; border-radius:5px;" onchange="WorkspaceSplit.updateFunc1Domain(${id}, this.value, document.getElementById('wp-f1-dmax-${id}').value)">
+              <span style="color:#94a3b8; font-size:12px;">,</span>
+              <input type="number" step="0.5" id="wp-f1-dmax-${id}" value="${p.graphState.f1DomMax !== null && p.graphState.f1DomMax !== undefined ? p.graphState.f1DomMax : ''}" placeholder="+∞" style="width:48px; height:26px; text-align:center; font-family:var(--mono); font-size:12px; font-weight:700; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.2); color:#f8fafc; border-radius:5px;" onchange="WorkspaceSplit.updateFunc1Domain(${id}, document.getElementById('wp-f1-dmin-${id}').value, this.value)">
+              <span class="wp-dr-lbl" style="color:#38bdf8;">]</span>
+              <button type="button" class="wp-dr-btn" style="padding:0 6px; font-size:11px;" onclick="WorkspaceSplit.setFuncDomainQuick(${id}, 1, 'all')" title="All Real Numbers">ℝ</button>
+              <button type="button" class="wp-dr-btn" style="padding:0 6px; font-size:11px;" onclick="WorkspaceSplit.setFuncDomainQuick(${id}, 1, 'pos')" title="x ≥ 0">x≥0</button>
+              <button type="button" class="wp-dr-btn" style="padding:0 6px; font-size:11px;" onclick="WorkspaceSplit.setFuncDomainQuick(${id}, 1, '[-2,3]')">[-2,3]</button>
+              <button type="button" class="wp-dr-btn" style="padding:0 6px; font-size:11px;" onclick="WorkspaceSplit.setFuncDomainQuick(${id}, 1, '[-5,5]')">[-5,5]</button>
+              <button type="button" class="wp-dr-btn" style="padding:0 6px; font-size:11px;" onclick="WorkspaceSplit.setFuncDomainQuick(${id}, 1, 'trig')">[0,2π]</button>
+            </div>
+
+            <button class="wp-graph-btn-compare ${p.graphState.compareEnabled ? 'active' : ''}" onclick="WorkspaceSplit.toggleGraphCompare(${id})" title="Add comparison equation on the same graph">
+              ${p.graphState.compareEnabled ? '✓ Comparing' : '＋ Compare'}
+            </button>
+            <button class="wp-dr-btn" onclick="WorkspaceSplit.resetGraphView(${id})" title="Reset View Origin" style="margin-left:auto;">⟲ Reset</button>
           </div>
-          <div class="wp-graph-sliders-row">
-            <div class="wp-slider-pill" title="Vertical Stretch (a)">
-              <span>Stretch (a):</span>
-              <input type="range" min="-4" max="4" step="0.2" value="${p.graphState.a}" oninput="WorkspaceSplit.setGraphParam(${id}, 'a', parseFloat(this.value))">
-              <span class="wp-val-lbl" id="wp-val-a-${id}">${p.graphState.a}</span>
+
+          <!-- Row 2 (if Compare Enabled): Function f2(x) -->
+          ${p.graphState.compareEnabled ? `
+            <div class="wp-graph-param-row wp-graph-compare-row" style="background: rgba(250, 204, 21, 0.08); border: 1px solid rgba(250, 204, 21, 0.25); border-radius: 8px; padding: 4px 8px; margin-top: 2px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <span class="wp-param-lbl" style="color:${p.graphState.compareColor || '#facc15'}; font-weight:700;">f₂(x):</span>
+              <input type="text" class="wp-graph-eq-input" id="wp-compare-input-${id}" value="${p.graphState.compareExpr || '2*x - 1'}" onchange="WorkspaceSplit.updateCompareEquation(${id}, this.value)" placeholder="e.g. 2*x - 1, cos(x), x^2..." title="Comparison equation formula" style="min-width:130px; max-width:200px;">
+
+              <!-- Line 2 Color Picker -->
+              <div style="display:inline-flex; align-items:center; gap:4px;" title="Comparison Curve Color">
+                ${SPLIT_LINE_COLORS.map(c => `
+                  <button type="button" onclick="WorkspaceSplit.setCompareLineColor(${id}, '${c}')" 
+                    style="width:20px; height:20px; border-radius:50%; background:${c}; border:${c.toLowerCase() === activeLine2 ? '2px solid #ffffff' : '1px solid rgba(255,255,255,0.25)'}; cursor:pointer; padding:0; outline:none; box-shadow:${c.toLowerCase() === activeLine2 ? '0 0 6px ' + c : 'none'};">
+                  </button>
+                `).join('')}
+              </div>
+
+              <!-- Function 2 Domain Restrictions -->
+              <div class="wp-graph-dr-presets" style="background:rgba(255,255,255,0.04); padding:3px 8px; border-radius:8px; display:inline-flex; align-items:center; gap:5px;" title="Restrict f2 domain">
+                <span class="wp-dr-lbl" style="color:#facc15;">D: [</span>
+                <input type="number" step="0.5" id="wp-f2-dmin-${id}" value="${p.graphState.f2DomMin !== null && p.graphState.f2DomMin !== undefined ? p.graphState.f2DomMin : ''}" placeholder="-∞" style="width:48px; height:26px; text-align:center; font-family:var(--mono); font-size:12px; font-weight:700; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.2); color:#f8fafc; border-radius:5px;" onchange="WorkspaceSplit.updateFunc2Domain(${id}, this.value, document.getElementById('wp-f2-dmax-${id}').value)">
+                <span style="color:#94a3b8; font-size:12px;">,</span>
+                <input type="number" step="0.5" id="wp-f2-dmax-${id}" value="${p.graphState.f2DomMax !== null && p.graphState.f2DomMax !== undefined ? p.graphState.f2DomMax : ''}" placeholder="+∞" style="width:48px; height:26px; text-align:center; font-family:var(--mono); font-size:12px; font-weight:700; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.2); color:#f8fafc; border-radius:5px;" onchange="WorkspaceSplit.updateFunc2Domain(${id}, document.getElementById('wp-f2-dmin-${id}').value, this.value)">
+                <span class="wp-dr-lbl" style="color:#facc15;">]</span>
+                <button type="button" class="wp-dr-btn" style="padding:0 6px; font-size:11px;" onclick="WorkspaceSplit.setFuncDomainQuick(${id}, 2, 'all')">ℝ</button>
+                <button type="button" class="wp-dr-btn" style="padding:0 6px; font-size:11px;" onclick="WorkspaceSplit.setFuncDomainQuick(${id}, 2, 'pos')">x≥0</button>
+              </div>
+
+              <div class="wp-compare-chips" style="display: flex; gap: 4px;">
+                <button class="wp-dr-btn" onclick="WorkspaceSplit.setComparePreset(${id}, '2*x')">2x</button>
+                <button class="wp-dr-btn" onclick="WorkspaceSplit.setComparePreset(${id}, 'cos(x)')">cos</button>
+                <button class="wp-dr-btn" onclick="WorkspaceSplit.setComparePreset(${id}, 'x^2')">x²</button>
+                <button class="wp-dr-btn" onclick="WorkspaceSplit.setComparePreset(${id}, '1/x')">1/x</button>
+              </div>
+              <button class="wp-dr-btn wp-dr-remove" onclick="WorkspaceSplit.toggleGraphCompare(${id})" title="Remove comparison curve" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.4); margin-left: auto;">✕</button>
             </div>
-            <div class="wp-slider-pill" title="Frequency / Width (b)">
-              <span>Frequency (b):</span>
-              <input type="range" min="-4" max="4" step="0.2" value="${p.graphState.b}" oninput="WorkspaceSplit.setGraphParam(${id}, 'b', parseFloat(this.value))">
-              <span class="wp-val-lbl" id="wp-val-b-${id}">${p.graphState.b}</span>
+          ` : ''}
+
+          <!-- Row 3: Graph Background Color / Board Theme & Sliders -->
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-top:2px;">
+            <!-- Board Theme Selection -->
+            <div style="display:inline-flex; align-items:center; gap:6px; background:rgba(255,255,255,0.04); padding:4px 8px; border-radius:8px;" title="Graph Background Theme">
+              <span style="font-size:12px; font-weight:700; color:#f8fafc; margin-right:4px;">🎨 Board:</span>
+              ${SPLIT_BOARD_THEMES.map(bt => {
+                const isCur = (bt.color.toLowerCase() === activeBg);
+                return `
+                  <button type="button" onclick="WorkspaceSplit.setGraphBoardBg(${id}, '${bt.color}')" 
+                    title="${bt.name} Theme"
+                    style="display:inline-flex; align-items:center; gap:4px; padding:3px 7px; border-radius:6px; background:${bt.color}; border:${isCur ? '2px solid #38bdf8' : '1px solid rgba(255,255,255,0.2)'}; cursor:pointer; font-size:11px; font-weight:700; color:${bt.color === '#ffffff' ? '#0f172a' : '#ffffff'}; box-shadow:${isCur ? '0 0 8px rgba(56,189,248,0.5)' : 'none'};">
+                    <span style="width:10px; height:10px; border-radius:50%; background:${bt.color}; border:1px solid ${bt.color === '#ffffff' ? '#94a3b8' : 'rgba(255,255,255,0.5)'};"></span>
+                    ${bt.name}
+                  </button>
+                `;
+              }).join('')}
             </div>
-            <div class="wp-slider-pill" title="Horizontal Shift (h)">
-              <span>Horiz Shift (h):</span>
-              <input type="range" min="-6" max="6" step="0.5" value="${p.graphState.h}" oninput="WorkspaceSplit.setGraphParam(${id}, 'h', parseFloat(this.value))">
-              <span class="wp-val-lbl" id="wp-val-h-${id}">${p.graphState.h}</span>
-            </div>
-            <div class="wp-slider-pill" title="Vertical Shift (k)">
-              <span>Vert Shift (k):</span>
-              <input type="range" min="-6" max="6" step="0.5" value="${p.graphState.k}" oninput="WorkspaceSplit.setGraphParam(${id}, 'k', parseFloat(this.value))">
-              <span class="wp-val-lbl" id="wp-val-k-${id}">${p.graphState.k}</span>
+
+            <!-- Transformation Sliders -->
+            <div class="wp-graph-sliders-row" style="margin-left:auto;">
+              <div class="wp-slider-pill" title="Vertical Stretch (a)">
+                <span>a:</span>
+                <input type="range" min="-4" max="4" step="0.2" value="${p.graphState.a}" oninput="WorkspaceSplit.setGraphParam(${id}, 'a', parseFloat(this.value))">
+                <span class="wp-val-lbl" id="wp-val-a-${id}">${p.graphState.a}</span>
+              </div>
+              <div class="wp-slider-pill" title="Frequency / Width (b)">
+                <span>b:</span>
+                <input type="range" min="-4" max="4" step="0.2" value="${p.graphState.b}" oninput="WorkspaceSplit.setGraphParam(${id}, 'b', parseFloat(this.value))">
+                <span class="wp-val-lbl" id="wp-val-b-${id}">${p.graphState.b}</span>
+              </div>
+              <div class="wp-slider-pill" title="Horizontal Shift (h)">
+                <span>h:</span>
+                <input type="range" min="-6" max="6" step="0.5" value="${p.graphState.h}" oninput="WorkspaceSplit.setGraphParam(${id}, 'h', parseFloat(this.value))">
+                <span class="wp-val-lbl" id="wp-val-h-${id}">${p.graphState.h}</span>
+              </div>
+              <div class="wp-slider-pill" title="Vertical Shift (k)">
+                <span>k:</span>
+                <input type="range" min="-6" max="6" step="0.5" value="${p.graphState.k}" oninput="WorkspaceSplit.setGraphParam(${id}, 'k', parseFloat(this.value))">
+                <span class="wp-val-lbl" id="wp-val-k-${id}">${p.graphState.k}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -1384,8 +1754,8 @@ const WorkspaceSplit = (() => {
         e.stopPropagation();
         cv.setPointerCapture(e.pointerId);
         isPanning = true;
-        startX = e.clientX - p.graphState.panX;
-        startY = e.clientY - p.graphState.panY;
+        startX = e.clientX - (p.graphState.panX || 0);
+        startY = e.clientY - (p.graphState.panY || 0);
       }
     });
 
@@ -1412,7 +1782,7 @@ const WorkspaceSplit = (() => {
       e.preventDefault();
       e.stopPropagation();
       const factor = e.deltaY < 0 ? 1.15 : 0.87;
-      p.graphState.zoom = Math.max(0.3, Math.min(6, p.graphState.zoom * factor));
+      p.graphState.zoom = Math.max(0.3, Math.min(6, (p.graphState.zoom || 1) * factor));
       renderGraphWorkspace(p, cv);
     }, { passive: false });
   }
@@ -1429,17 +1799,23 @@ const WorkspaceSplit = (() => {
     const W = rect.width || 400;
     const H = rect.height || 300;
 
-    // Background
-    ctx.fillStyle = '#0b1329';
+    // Background Canvas Color (Adapted to chosen theme)
+    const boardBg = p.graphState.boardBg || '#0b1329';
+    const isLight = (boardBg === '#ffffff' || boardBg === '#f8fafc');
+    ctx.fillStyle = boardBg;
     ctx.fillRect(0, 0, W, H);
 
-    // Center Origin
+    // Center Origin & Scale
+    if (!p.graphState.zoom) p.graphState.zoom = 1;
+    if (p.graphState.panX === undefined) p.graphState.panX = 0;
+    if (p.graphState.panY === undefined) p.graphState.panY = 0;
+
     const originX = W / 2 + (p.graphState.panX || 0);
     const originY = H / 2 + (p.graphState.panY || 0);
     const scale = 38 * (p.graphState.zoom || 1);
 
-    // Grid lines
-    ctx.strokeStyle = 'rgba(148, 163, 184, 0.12)';
+    // Grid lines with theme contrast
+    ctx.strokeStyle = isLight ? 'rgba(15, 23, 42, 0.12)' : 'rgba(148, 163, 184, 0.12)';
     ctx.lineWidth = 1;
     ctx.beginPath();
     for (let x = originX % scale; x <= W; x += scale) {
@@ -1453,7 +1829,7 @@ const WorkspaceSplit = (() => {
     ctx.stroke();
 
     // Axes
-    ctx.strokeStyle = '#38bdf8';
+    ctx.strokeStyle = isLight ? '#0284c7' : '#38bdf8';
     ctx.lineWidth = 1.8;
     ctx.beginPath();
     ctx.moveTo(0, originY);
@@ -1463,8 +1839,8 @@ const WorkspaceSplit = (() => {
     ctx.stroke();
 
     // Axis numbers
-    ctx.fillStyle = '#94a3b8';
-    ctx.font = '10px JetBrains Mono, monospace';
+    ctx.fillStyle = isLight ? '#334155' : '#94a3b8';
+    ctx.font = '10px "JetBrains Mono", monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
 
@@ -1489,16 +1865,20 @@ const WorkspaceSplit = (() => {
     }
 
     // Origin label
-    ctx.fillStyle = '#38bdf8';
+    ctx.fillStyle = isLight ? '#0284c7' : '#38bdf8';
     ctx.fillText('0', originX - 4, originY + 12);
 
-    // Graph function evaluation
-    const { a, b, h, k } = p.graphState;
+    // Primary Graph function evaluation f₁(x) with Function Domain & Range limits
+    const { a = 1, b = 1, h = 0, k = 0 } = p.graphState;
     const expr = p.graphState.expr || 'x';
+    const fn1 = compileMathExpr(expr);
 
-    let fn = compileMathExpr(expr);
+    const f1DomMin = (p.graphState.f1DomMin !== null && p.graphState.f1DomMin !== undefined && p.graphState.f1DomMin !== '') ? parseFloat(p.graphState.f1DomMin) : null;
+    const f1DomMax = (p.graphState.f1DomMax !== null && p.graphState.f1DomMax !== undefined && p.graphState.f1DomMax !== '') ? parseFloat(p.graphState.f1DomMax) : null;
+    const f1RngMin = (p.graphState.f1RngMin !== null && p.graphState.f1RngMin !== undefined && p.graphState.f1RngMin !== '') ? parseFloat(p.graphState.f1RngMin) : null;
+    const f1RngMax = (p.graphState.f1RngMax !== null && p.graphState.f1RngMax !== undefined && p.graphState.f1RngMax !== '') ? parseFloat(p.graphState.f1RngMax) : null;
 
-    // Live Transformed Curve y = a * f(b*(x - h)) + k
+    // Live Transformed Curve f₁(x): y = a * f(b*(x - h)) + k
     ctx.strokeStyle = p.graphState.color || '#38bdf8';
     ctx.lineWidth = 3;
     ctx.beginPath();
@@ -1506,12 +1886,34 @@ const WorkspaceSplit = (() => {
     let started = false;
     for (let px = 0; px <= W; px += 2) {
       const mathX = (px - originX) / scale;
+
+      // Function Domain Check for f1
+      if (f1DomMin !== null && mathX < f1DomMin - 1e-7) {
+        if (started) { ctx.stroke(); ctx.beginPath(); started = false; }
+        continue;
+      }
+      if (f1DomMax !== null && mathX > f1DomMax + 1e-7) {
+        if (started) { ctx.stroke(); ctx.beginPath(); started = false; }
+        continue;
+      }
+
       const innerX = b * (mathX - h);
-      const innerY = fn(innerX);
+      const innerY = fn1(innerX);
       if (innerY !== null && !isNaN(innerY) && isFinite(innerY)) {
         const mathY = a * innerY + k;
+
+        // Function Range Check for f1
+        if (f1RngMin !== null && mathY < f1RngMin - 1e-7) {
+          if (started) { ctx.stroke(); ctx.beginPath(); started = false; }
+          continue;
+        }
+        if (f1RngMax !== null && mathY > f1RngMax + 1e-7) {
+          if (started) { ctx.stroke(); ctx.beginPath(); started = false; }
+          continue;
+        }
+
         const py = originY - (mathY * scale);
-        if (py >= -300 && py <= H + 300) {
+        if (py >= -400 && py <= H + 400) {
           if (!started) {
             ctx.moveTo(px, py);
             started = true;
@@ -1519,35 +1921,189 @@ const WorkspaceSplit = (() => {
             ctx.lineTo(px, py);
           }
         } else {
-          started = false;
+          if (started) { ctx.stroke(); ctx.beginPath(); started = false; }
         }
       } else {
-        started = false;
+        if (started) { ctx.stroke(); ctx.beginPath(); started = false; }
       }
     }
     ctx.stroke();
 
-    // Equation Formula Tag Overlay
-    ctx.fillStyle = 'rgba(7, 15, 30, 0.88)';
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.45)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.roundRect(10, 10, 210, 30, 6);
-    ctx.fill();
-    ctx.stroke();
+    // Draw boundary endpoint markers for f1
+    if (f1DomMin !== null) {
+      const yAtMin = fn1(b * (f1DomMin - h)) * a + k;
+      if (!isNaN(yAtMin) && isFinite(yAtMin)) {
+        const sx = originX + f1DomMin * scale;
+        const sy = originY - yAtMin * scale;
+        ctx.beginPath();
+        ctx.arc(sx, sy, 5, 0, Math.PI * 2);
+        ctx.fillStyle = p.graphState.color || '#38bdf8';
+        ctx.fill();
+        ctx.strokeStyle = isLight ? '#0f172a' : '#ffffff';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      }
+    }
+    if (f1DomMax !== null) {
+      const yAtMax = fn1(b * (f1DomMax - h)) * a + k;
+      if (!isNaN(yAtMax) && isFinite(yAtMax)) {
+        const sx = originX + f1DomMax * scale;
+        const sy = originY - yAtMax * scale;
+        ctx.beginPath();
+        ctx.arc(sx, sy, 5, 0, Math.PI * 2);
+        ctx.fillStyle = p.graphState.color || '#38bdf8';
+        ctx.fill();
+        ctx.strokeStyle = isLight ? '#0f172a' : '#ffffff';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      }
+    }
 
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 12px Inter, sans-serif';
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
+    // Secondary Comparison Curve f₂(x) if enabled
+    if (p.graphState.compareEnabled && p.graphState.compareExpr) {
+      const fn2 = compileMathExpr(p.graphState.compareExpr);
+      const f2DomMin = (p.graphState.f2DomMin !== null && p.graphState.f2DomMin !== undefined && p.graphState.f2DomMin !== '') ? parseFloat(p.graphState.f2DomMin) : null;
+      const f2DomMax = (p.graphState.f2DomMax !== null && p.graphState.f2DomMax !== undefined && p.graphState.f2DomMax !== '') ? parseFloat(p.graphState.f2DomMax) : null;
+
+      ctx.strokeStyle = p.graphState.compareColor || '#facc15';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      let compStarted = false;
+      for (let px = 0; px <= W; px += 2) {
+        const mathX = (px - originX) / scale;
+
+        // Function Domain Check for f2
+        if (f2DomMin !== null && mathX < f2DomMin - 1e-7) {
+          if (compStarted) { ctx.stroke(); ctx.beginPath(); compStarted = false; }
+          continue;
+        }
+        if (f2DomMax !== null && mathX > f2DomMax + 1e-7) {
+          if (compStarted) { ctx.stroke(); ctx.beginPath(); compStarted = false; }
+          continue;
+        }
+
+        const mathY = fn2(mathX);
+        if (mathY !== null && !isNaN(mathY) && isFinite(mathY)) {
+          const py = originY - (mathY * scale);
+          if (py >= -400 && py <= H + 400) {
+            if (!compStarted) {
+              ctx.moveTo(px, py);
+              compStarted = true;
+            } else {
+              ctx.lineTo(px, py);
+            }
+          } else {
+            if (compStarted) { ctx.stroke(); ctx.beginPath(); compStarted = false; }
+          }
+        } else {
+          if (compStarted) { ctx.stroke(); ctx.beginPath(); compStarted = false; }
+        }
+      }
+      ctx.stroke();
+
+      // Endpoint markers for f2
+      if (f2DomMin !== null) {
+        const yAtMin = fn2(f2DomMin);
+        if (!isNaN(yAtMin) && isFinite(yAtMin)) {
+          ctx.beginPath();
+          ctx.arc(originX + f2DomMin * scale, originY - yAtMin * scale, 5, 0, Math.PI * 2);
+          ctx.fillStyle = p.graphState.compareColor || '#facc15';
+          ctx.fill();
+          ctx.strokeStyle = isLight ? '#0f172a' : '#ffffff';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+        }
+      }
+      if (f2DomMax !== null) {
+        const yAtMax = fn2(f2DomMax);
+        if (!isNaN(yAtMax) && isFinite(yAtMax)) {
+          ctx.beginPath();
+          ctx.arc(originX + f2DomMax * scale, originY - yAtMax * scale, 5, 0, Math.PI * 2);
+          ctx.fillStyle = p.graphState.compareColor || '#facc15';
+          ctx.fill();
+          ctx.strokeStyle = isLight ? '#0f172a' : '#ffffff';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+        }
+      }
+    }
+
+    // Top Canvas Badges: Equation(s) & Function Domain Restrictions
+    let badgeX = 12;
+    const badgeY = 12;
+    const badgeH = 28;
+
+    // 1. Primary Equation Badge with function domain
     const hStr = h !== 0 ? (h > 0 ? ` - ${h}` : ` + ${Math.abs(h)}`) : '';
     const kStr = k !== 0 ? (k > 0 ? ` + ${k}` : ` - ${Math.abs(k)}`) : '';
     const aStr = a !== 1 ? `${a}·` : '';
     const bStr = b !== 1 ? `${b}` : '';
-    ctx.fillText(`y = ${aStr}f(${bStr}(x${hStr}))${kStr}`, 18, 25);
+    const isTransformed = (a !== 1 || b !== 1 || h !== 0 || k !== 0);
+    const hasF1Dom = (f1DomMin !== null || f1DomMax !== null);
+    const f1DomText = hasF1Dom ? ` [${f1DomMin ?? '-∞'}, ${f1DomMax ?? '∞'}]` : '';
+
+    const eq1Display = isTransformed 
+      ? `f₁(x) = ${aStr}${expr}(${bStr}(x${hStr}))${kStr}${f1DomText}`.replace(/\(\(/g, '(').replace(/\)\)/g, ')')
+      : `f₁(x) = ${expr}${f1DomText}`;
+
+    ctx.font = 'bold 12px "Inter", -apple-system, sans-serif';
+    const eq1W = Math.min(270, ctx.measureText(eq1Display).width + 36);
+
+    ctx.fillStyle = isLight ? 'rgba(255, 255, 255, 0.95)' : 'rgba(11, 19, 41, 0.90)';
+    ctx.strokeStyle = p.graphState.color || '#38bdf8';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.roundRect(badgeX, badgeY, eq1W, badgeH, 6);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = p.graphState.color || '#38bdf8';
+    ctx.beginPath();
+    ctx.arc(badgeX + 12, badgeY + badgeH / 2, 4.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = isLight ? '#0f172a' : '#f8fafc';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(eq1Display, badgeX + 22, badgeY + badgeH / 2);
+
+    badgeX += eq1W + 8;
+
+    // 2. Secondary Equation Badge (if compare enabled)
+    if (p.graphState.compareEnabled && p.graphState.compareExpr) {
+      const f2DomMin = (p.graphState.f2DomMin !== null && p.graphState.f2DomMin !== undefined && p.graphState.f2DomMin !== '') ? parseFloat(p.graphState.f2DomMin) : null;
+      const f2DomMax = (p.graphState.f2DomMax !== null && p.graphState.f2DomMax !== undefined && p.graphState.f2DomMax !== '') ? parseFloat(p.graphState.f2DomMax) : null;
+      const hasF2Dom = (f2DomMin !== null || f2DomMax !== null);
+      const f2DomText = hasF2Dom ? ` [${f2DomMin ?? '-∞'}, ${f2DomMax ?? '∞'}]` : '';
+
+      const eq2Display = `f₂(x) = ${p.graphState.compareExpr}${f2DomText}`;
+      const eq2W = Math.min(240, ctx.measureText(eq2Display).width + 36);
+
+      ctx.fillStyle = isLight ? 'rgba(255, 255, 255, 0.95)' : 'rgba(11, 19, 41, 0.90)';
+      ctx.strokeStyle = p.graphState.compareColor || '#facc15';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.roundRect(badgeX, badgeY, eq2W, badgeH, 6);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = p.graphState.compareColor || '#facc15';
+      ctx.beginPath();
+      ctx.arc(badgeX + 12, badgeY + badgeH / 2, 4.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = isLight ? '#854d0e' : '#fef08a';
+      ctx.fillText(eq2Display, badgeX + 22, badgeY + badgeH / 2);
+    }
   }
 
   function compileMathExpr(expr) {
+    if (typeof GraphObject !== 'undefined' && typeof GraphObject.compile === 'function') {
+      try {
+        const fn = GraphObject.compile(expr);
+        if (fn && typeof fn === 'function') return fn;
+      } catch (_) {}
+    }
     const clean = (expr || '').toLowerCase().trim();
     if (clean === 'sin(x)' || clean === 'sin') return (x) => Math.sin(x);
     if (clean === 'cos(x)' || clean === 'cos') return (x) => Math.cos(x);
@@ -1560,7 +2116,20 @@ const WorkspaceSplit = (() => {
     if (clean === '1/x' || clean === 'rational') return (x) => (Math.abs(x) > 0.001 ? 1 / x : null);
     if (clean === 'sqrt(x)' || clean === '√x') return (x) => (x >= 0 ? Math.sqrt(x) : null);
 
-    return (x) => Math.sin(x);
+    try {
+      const sanitized = clean.replace(/\^/g, '**').replace(/x/g, '(x)');
+      const func = new Function('x', `return ${sanitized};`);
+      return (x) => {
+        try {
+          const res = func(x);
+          return isFinite(res) ? res : null;
+        } catch (_) {
+          return null;
+        }
+      };
+    } catch (_) {
+      return (x) => Math.sin(x);
+    }
   }
 
   function loadGraphPreset(id, familyId) {
@@ -1578,18 +2147,18 @@ const WorkspaceSplit = (() => {
     const sel = presets[familyId] || presets['sin'];
     p.graphState = { ...p.graphState, ...sel, familyId };
 
-    const cv = containerEl.querySelector(`#wp-graph-cv-${id}`);
-    const eqInput = containerEl.querySelector(`#wp-eq-input-${id}`);
+    const cv = containerEl ? containerEl.querySelector(`#wp-graph-cv-${id}`) : document.getElementById(`wp-graph-cv-${id}`);
+    const eqInput = containerEl ? containerEl.querySelector(`#wp-eq-input-${id}`) : document.getElementById(`wp-eq-input-${id}`);
     if (eqInput) eqInput.value = sel.expr;
 
     ['a','b','h','k'].forEach(k => {
-      const lbl = containerEl.querySelector(`#wp-val-${k}-${id}`);
+      const lbl = containerEl ? containerEl.querySelector(`#wp-val-${k}-${id}`) : document.getElementById(`wp-val-${k}-${id}`);
       if (lbl) lbl.textContent = sel[k];
     });
 
-    renderGraphWorkspace(p, cv);
+    if (cv) renderGraphWorkspace(p, cv);
 
-    const centerHead = containerEl.querySelector(`#wp-center-${id}`);
+    const centerHead = containerEl ? containerEl.querySelector(`#wp-center-${id}`) : document.getElementById(`wp-center-${id}`);
     if (centerHead) renderHeaderControls(p, centerHead);
   }
 
@@ -1597,18 +2166,192 @@ const WorkspaceSplit = (() => {
     const p = partitions.find(item => item.id === id);
     if (!p) return;
     p.graphState.expr = expr;
-    const cv = containerEl.querySelector(`#wp-graph-cv-${id}`);
-    renderGraphWorkspace(p, cv);
+    const cv = containerEl ? containerEl.querySelector(`#wp-graph-cv-${id}`) : document.getElementById(`wp-graph-cv-${id}`);
+    if (cv) renderGraphWorkspace(p, cv);
+  }
+
+  function updateCompareEquation(id, expr) {
+    const p = partitions.find(item => item.id === id);
+    if (!p) return;
+    p.graphState.compareExpr = expr;
+    const cv = containerEl ? containerEl.querySelector(`#wp-graph-cv-${id}`) : document.getElementById(`wp-graph-cv-${id}`);
+    if (cv) renderGraphWorkspace(p, cv);
+  }
+
+  function setComparePreset(id, expr) {
+    const p = partitions.find(item => item.id === id);
+    if (!p) return;
+    p.graphState.compareExpr = expr;
+    const input = containerEl ? containerEl.querySelector(`#wp-compare-input-${id}`) : document.getElementById(`wp-compare-input-${id}`);
+    if (input) input.value = expr;
+    const cv = containerEl ? containerEl.querySelector(`#wp-graph-cv-${id}`) : document.getElementById(`wp-graph-cv-${id}`);
+    if (cv) renderGraphWorkspace(p, cv);
+  }
+
+  function toggleGraphCompare(id) {
+    const p = partitions.find(item => item.id === id);
+    if (!p) return;
+    p.graphState = p.graphState || {};
+    p.graphState.compareEnabled = !p.graphState.compareEnabled;
+    if (p.graphState.compareEnabled && !p.graphState.compareExpr) {
+      p.graphState.compareExpr = '2*x - 1';
+    }
+    const box = containerEl ? containerEl.querySelector(`#wp-content-box-${id}`) : document.getElementById(`wp-content-box-${id}`);
+    if (box) {
+      mountGraphContent(p, box);
+    }
+  }
+
+  function setGraphBoardBg(id, color) {
+    const p = partitions.find(item => item.id === id);
+    if (!p) return;
+    p.graphState = p.graphState || {};
+    p.graphState.boardBg = color;
+    const box = containerEl ? containerEl.querySelector(`#wp-content-box-${id}`) : document.getElementById(`wp-content-box-${id}`);
+    if (box) {
+      mountGraphContent(p, box);
+    } else {
+      const cv = containerEl ? containerEl.querySelector(`#wp-graph-cv-${id}`) : document.getElementById(`wp-graph-cv-${id}`);
+      if (cv) renderGraphWorkspace(p, cv);
+    }
+  }
+
+  function setGraphLineColor(id, color) {
+    const p = partitions.find(item => item.id === id);
+    if (!p) return;
+    p.graphState = p.graphState || {};
+    p.graphState.color = color;
+    const box = containerEl ? containerEl.querySelector(`#wp-content-box-${id}`) : document.getElementById(`wp-content-box-${id}`);
+    if (box) {
+      mountGraphContent(p, box);
+    } else {
+      const cv = containerEl ? containerEl.querySelector(`#wp-graph-cv-${id}`) : document.getElementById(`wp-graph-cv-${id}`);
+      if (cv) renderGraphWorkspace(p, cv);
+    }
+  }
+
+  function setCompareLineColor(id, color) {
+    const p = partitions.find(item => item.id === id);
+    if (!p) return;
+    p.graphState = p.graphState || {};
+    p.graphState.compareColor = color;
+    const box = containerEl ? containerEl.querySelector(`#wp-content-box-${id}`) : document.getElementById(`wp-content-box-${id}`);
+    if (box) {
+      mountGraphContent(p, box);
+    } else {
+      const cv = containerEl ? containerEl.querySelector(`#wp-graph-cv-${id}`) : document.getElementById(`wp-graph-cv-${id}`);
+      if (cv) renderGraphWorkspace(p, cv);
+    }
+  }
+
+  function updateFunc1Domain(id, minVal, maxVal) {
+    const p = partitions.find(item => item.id === id);
+    if (!p) return;
+    p.graphState = p.graphState || {};
+    const minStr = String(minVal || '').trim();
+    const maxStr = String(maxVal || '').trim();
+    p.graphState.f1DomMin = (minStr !== '' && !isNaN(parseFloat(minStr))) ? parseFloat(minStr) : null;
+    p.graphState.f1DomMax = (maxStr !== '' && !isNaN(parseFloat(maxStr))) ? parseFloat(maxStr) : null;
+    const cv = containerEl ? containerEl.querySelector(`#wp-graph-cv-${id}`) : document.getElementById(`wp-graph-cv-${id}`);
+    if (cv) renderGraphWorkspace(p, cv);
+  }
+
+  function updateFunc2Domain(id, minVal, maxVal) {
+    const p = partitions.find(item => item.id === id);
+    if (!p) return;
+    p.graphState = p.graphState || {};
+    const minStr = String(minVal || '').trim();
+    const maxStr = String(maxVal || '').trim();
+    p.graphState.f2DomMin = (minStr !== '' && !isNaN(parseFloat(minStr))) ? parseFloat(minStr) : null;
+    p.graphState.f2DomMax = (maxStr !== '' && !isNaN(parseFloat(maxStr))) ? parseFloat(maxStr) : null;
+    const cv = containerEl ? containerEl.querySelector(`#wp-graph-cv-${id}`) : document.getElementById(`wp-graph-cv-${id}`);
+    if (cv) renderGraphWorkspace(p, cv);
+  }
+
+  function setFuncDomainQuick(id, funcNum, preset) {
+    const p = partitions.find(item => item.id === id);
+    if (!p) return;
+    p.graphState = p.graphState || {};
+    let minV = null, maxV = null;
+    if (preset === 'pos') { minV = 0; maxV = null; }
+    else if (preset === '[-2,3]') { minV = -2; maxV = 3; }
+    else if (preset === '[-5,5]') { minV = -5; maxV = 5; }
+    else if (preset === 'trig') { minV = 0; maxV = 6.28; }
+
+    if (funcNum === 1) {
+      p.graphState.f1DomMin = minV;
+      p.graphState.f1DomMax = maxV;
+    } else {
+      p.graphState.f2DomMin = minV;
+      p.graphState.f2DomMax = maxV;
+    }
+
+    const box = containerEl ? containerEl.querySelector(`#wp-content-box-${id}`) : document.getElementById(`wp-content-box-${id}`);
+    if (box) {
+      mountGraphContent(p, box);
+    } else {
+      const cv = containerEl ? containerEl.querySelector(`#wp-graph-cv-${id}`) : document.getElementById(`wp-graph-cv-${id}`);
+      if (cv) renderGraphWorkspace(p, cv);
+    }
+  }
+
+  function setGraphDomainRangePreset(id, preset) {
+    const p = partitions.find(item => item.id === id);
+    if (!p) return;
+    p.graphState = p.graphState || {};
+    p.graphState.domainPreset = preset;
+
+    if (preset === 'std') {
+      p.graphState.zoom = 1;
+      p.graphState.panX = 0;
+      p.graphState.panY = 0;
+    } else if (preset === 'trig') {
+      p.graphState.zoom = 0.9;
+      p.graphState.panX = 0;
+      p.graphState.panY = 0;
+    } else if (preset === 'compact') {
+      p.graphState.zoom = 2.0;
+      p.graphState.panX = 0;
+      p.graphState.panY = 0;
+    } else if (preset === 'pos') {
+      p.graphState.zoom = 1.2;
+      p.graphState.panX = -120;
+      p.graphState.panY = 90;
+    }
+
+    const box = containerEl ? containerEl.querySelector(`#wp-content-box-${id}`) : document.getElementById(`wp-content-box-${id}`);
+    if (box) {
+      mountGraphContent(p, box);
+    } else {
+      const cv = containerEl ? containerEl.querySelector(`#wp-graph-cv-${id}`) : document.getElementById(`wp-graph-cv-${id}`);
+      if (cv) renderGraphWorkspace(p, cv);
+    }
+  }
+
+  function resetGraphView(id) {
+    const p = partitions.find(item => item.id === id);
+    if (!p) return;
+    p.graphState.zoom = 1;
+    p.graphState.panX = 0;
+    p.graphState.panY = 0;
+    p.graphState.domainPreset = 'std';
+    const box = containerEl ? containerEl.querySelector(`#wp-content-box-${id}`) : document.getElementById(`wp-content-box-${id}`);
+    if (box) {
+      mountGraphContent(p, box);
+    } else {
+      const cv = containerEl ? containerEl.querySelector(`#wp-graph-cv-${id}`) : document.getElementById(`wp-graph-cv-${id}`);
+      if (cv) renderGraphWorkspace(p, cv);
+    }
   }
 
   function setGraphParam(id, param, val) {
     const p = partitions.find(item => item.id === id);
     if (!p) return;
     p.graphState[param] = val;
-    const lbl = containerEl.querySelector(`#wp-val-${param}-${id}`);
+    const lbl = containerEl ? containerEl.querySelector(`#wp-val-${param}-${id}`) : document.getElementById(`wp-val-${param}-${id}`);
     if (lbl) lbl.textContent = val;
-    const cv = containerEl.querySelector(`#wp-graph-cv-${id}`);
-    renderGraphWorkspace(p, cv);
+    const cv = containerEl ? containerEl.querySelector(`#wp-graph-cv-${id}`) : document.getElementById(`wp-graph-cv-${id}`);
+    if (cv) renderGraphWorkspace(p, cv);
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -1969,6 +2712,33 @@ const WorkspaceSplit = (() => {
   // ACTIVE PARTITION MANAGEMENT & GLOBAL SYNC
   // ─────────────────────────────────────────────────────────────────────────────
 
+  function syncPartitionWithApp(p) {
+    if (!p) return;
+    if (typeof App !== 'undefined') {
+      const tool = App.currentTool || 'select';
+      if (tool === 'select') {
+        p.mode = 'interact';
+      } else {
+        p.mode = 'draw';
+        if (tool === 'eraser') {
+          p.tool = 'eraser';
+        } else if (tool === 'highlighter') {
+          p.tool = 'highlighter';
+        } else if (tool === 'text') {
+          p.tool = 'text';
+        } else if (tool === 'shape') {
+          p.tool = 'shape';
+        } else {
+          p.tool = 'pen';
+        }
+      }
+      p.color = App.currentColor || p.color;
+      p.size = App.penSize || p.size || 3;
+      p.eraserSize = App.eraserSize || p.eraserSize || 26;
+    }
+    syncPartitionModeUI(p);
+  }
+
   function setActivePartition(id) {
     activePartitionId = id;
     if (!containerEl) return;
@@ -1977,14 +2747,8 @@ const WorkspaceSplit = (() => {
     });
 
     const activeP = partitions.find(p => p.id === id);
-    if (activeP && typeof App !== 'undefined') {
-      // Sync global tool and color buttons to reflect active partition's state
-      document.querySelectorAll('.tool-btn[data-tool]').forEach(b => {
-        b.classList.toggle('active', b.dataset.tool === activeP.tool);
-      });
-      document.querySelectorAll('.color-dot').forEach(d => {
-        d.classList.toggle('active', d.dataset.hex && d.dataset.hex.toLowerCase() === activeP.color.toLowerCase());
-      });
+    if (activeP) {
+      syncPartitionWithApp(activeP);
     }
   }
 
@@ -1997,15 +2761,43 @@ const WorkspaceSplit = (() => {
   }
 
   function setActivePartitionTool(tool) {
-    setPartitionTool(activePartitionId, tool);
+    const p = getActivePartition() || partitions[0];
+    if (!p) return;
+    if (tool === 'select') {
+      p.mode = 'interact';
+    } else {
+      p.mode = 'draw';
+      if (tool === 'eraser') {
+        p.tool = 'eraser';
+      } else if (tool === 'highlighter') {
+        p.tool = 'highlighter';
+      } else if (tool === 'text') {
+        p.tool = 'text';
+      } else if (tool === 'shape') {
+        p.tool = 'shape';
+      } else {
+        p.tool = 'pen';
+      }
+    }
+    syncPartitionModeUI(p);
   }
 
   function setActivePartitionColor(color) {
-    setPartitionColor(activePartitionId, color);
+    partitions.forEach(p => {
+      p.color = color;
+    });
   }
 
   function setActivePartitionSize(size) {
-    setPartitionSize(activePartitionId, size);
+    partitions.forEach(p => {
+      p.size = size;
+    });
+  }
+
+  function setActivePartitionEraserSize(size) {
+    partitions.forEach(p => {
+      p.eraserSize = size;
+    });
   }
 
   function undoActive() {
@@ -2119,32 +2911,46 @@ const WorkspaceSplit = (() => {
   // ─────────────────────────────────────────────────────────────────────────────
 
   function serialize() {
-    return partitions.map(p => ({
-      id: p.id,
-      title: p.title,
-      type: p.type,
-      mode: p.mode,
-      tool: p.tool,
-      color: p.color,
-      size: p.size,
-      eraserSize: p.eraserSize,
-      shapeType: p.shapeType,
-      boardBg: p.boardBg,
-      strokes: p.strokes || [],
-      graphState: { ...p.graphState },
-      pptState: {
-        slideIndex: p.pptState.slideIndex,
-        fileName: p.pptState.currentDeck ? p.pptState.currentDeck.fileName : null
-      },
-      geometryState: { ...p.geometryState },
-      simState: { ...p.simState }
-    }));
+    return {
+      mode: currentMode,
+      ratio: splitRatio,
+      partitions: partitions.map(p => ({
+        id: p.id,
+        title: p.title,
+        type: p.type,
+        mode: p.mode,
+        tool: p.tool,
+        color: p.color,
+        size: p.size,
+        eraserSize: p.eraserSize,
+        shapeType: p.shapeType,
+        boardBg: p.boardBg,
+        strokes: (p.strokes || []).map(s => ({ ...s, pts: s.pts ? s.pts.slice() : [] })),
+        graphState: JSON.parse(JSON.stringify(p.graphState || {})),
+        pptState: {
+          slideIndex: p.pptState ? p.pptState.slideIndex : 0,
+          fileName: (p.pptState && p.pptState.currentDeck) ? p.pptState.currentDeck.fileName : null
+        },
+        geometryState: JSON.parse(JSON.stringify(p.geometryState || {})),
+        simState: JSON.parse(JSON.stringify(p.simState || {}))
+      }))
+    };
   }
 
-  function restore(mode, ratio, partitionsData) {
-    if (ratio) splitRatio = ratio;
-    if (partitionsData && Array.isArray(partitionsData)) {
-      partitionsData.forEach(saved => {
+  function restore(stateOrMode, ratio, partitionsData) {
+    let mode = stateOrMode;
+    let r = ratio;
+    let pData = partitionsData;
+
+    if (typeof stateOrMode === 'object' && stateOrMode !== null) {
+      mode = stateOrMode.mode;
+      r = stateOrMode.ratio;
+      pData = stateOrMode.partitions;
+    }
+
+    if (r) splitRatio = r;
+    if (pData && Array.isArray(pData)) {
+      pData.forEach(saved => {
         const target = partitions.find(p => p.id === saved.id);
         if (target) {
           target.type = saved.type || target.type;
@@ -2155,14 +2961,15 @@ const WorkspaceSplit = (() => {
           target.eraserSize = saved.eraserSize || target.eraserSize;
           target.shapeType = saved.shapeType || target.shapeType;
           target.boardBg = saved.boardBg || target.boardBg;
-          target.strokes = saved.strokes || [];
-          if (saved.graphState) target.graphState = { ...target.graphState, ...saved.graphState };
-          if (saved.geometryState) target.geometryState = { ...target.geometryState, ...saved.geometryState };
-          if (saved.simState) target.simState = { ...target.simState, ...saved.simState };
+          target.strokes = saved.strokes ? saved.strokes.map(s => ({ ...s, pts: s.pts ? s.pts.slice() : [] })) : [];
+          if (saved.graphState) target.graphState = JSON.parse(JSON.stringify(saved.graphState));
+          if (saved.geometryState) target.geometryState = JSON.parse(JSON.stringify(saved.geometryState));
+          if (saved.simState) target.simState = JSON.parse(JSON.stringify(saved.simState));
         }
       });
     }
-    setMode(mode || 'normal');
+
+    setMode(mode || 'normal', r);
   }
 
   return {
@@ -2170,11 +2977,17 @@ const WorkspaceSplit = (() => {
     setMode,
     getMode,
     getSplitRatio,
+    setSplitRatio,
+    enterSplit3Mode,
+    applyPreset,
     getActivePartitionId,
     getActivePartition,
+    addShapeToActive,
     setActivePartitionTool,
     setActivePartitionColor,
     setActivePartitionSize,
+    setActivePartitionEraserSize,
+    syncPartitionWithApp,
     undoActive,
     redoActive,
     changePartitionContent,
@@ -2192,8 +3005,20 @@ const WorkspaceSplit = (() => {
     swapPartitions,
     snapshotPartition,
     toggleMaximize,
+    setGraphBoardBg,
+    setGraphLineColor,
+    setCompareLineColor,
+    updateFunc1Domain,
+    updateFunc2Domain,
+    setFuncDomainQuick,
     loadGraphPreset,
     updateGraphEquation,
+    updateCompareEquation,
+    setComparePreset,
+    toggleGraphCompare,
+    setGraphDomainRangePreset,
+    resetGraphView,
+    compileMathExpr,
     setGraphParam,
     prevSlide,
     nextSlide,

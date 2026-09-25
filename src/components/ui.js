@@ -1247,7 +1247,12 @@ const UI = (() => {
               else if (s.t === 'compass') App.showToast('🧭 Compass: Drag from center to draw circle/arc');
             }
           } else {
-            Canvas.addShape(s.t);
+            if (typeof WorkspaceSplit !== 'undefined' && WorkspaceSplit.getMode() !== 'normal') {
+              WorkspaceSplit.addShapeToActive(s.t);
+              UI.closeShapesFlyout();
+            } else {
+              Canvas.addShape(s.t);
+            }
           }
         });
         grid.appendChild(btn);

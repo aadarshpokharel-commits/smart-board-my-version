@@ -711,10 +711,19 @@ const Drawing = (() => {
   }
 
   function syncPointerEvents() {
+    const isSplitActive = (typeof WorkspaceSplit !== 'undefined' && WorkspaceSplit.getMode() !== 'normal');
     const tool     = (typeof App !== 'undefined') ? App.currentTool : 'pen';
     const dc       = getDrawCanvas();
     const vp       = document.getElementById('canvas-viewport');
     if (!dc) return;
+
+    if (isSplitActive) {
+      dc.style.pointerEvents = 'none';
+      if (vp) vp.style.zIndex = '2';
+      dc.style.zIndex = '2';
+      return;
+    }
+
     const useDraw = (tool === 'pen' || tool === 'highlighter' || tool === 'eraser');
     dc.style.pointerEvents = useDraw ? 'auto' : 'none';
     if (vp) {

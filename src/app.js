@@ -177,13 +177,13 @@ const App = (() => {
   }
 
   function addPage() {
-    // 1. Save current active page state completely
+    // 1. Save current active page state completely (including any active split screen)
     saveCurrent();
 
     // 2. Inherit current board background theme so new page matches
     const curColorId = (typeof Canvas !== 'undefined' && Canvas.getBoardColorId) ? Canvas.getBoardColorId() : null;
 
-    // 3. Push brand new blank page object
+    // 3. Push brand new blank page object (normal single whiteboard canvas)
     pages.push({
       id: Date.now(),
       label: `Page ${pages.length + 1}`,
@@ -193,6 +193,7 @@ const App = (() => {
       drawDataUrl: null,
       bgImage: null,
       boardColorId: curColorId,
+      splitState: null,
       history: [],
       redoStack: []
     });
@@ -240,6 +241,16 @@ const App = (() => {
     pages[currentPage].boardColorId = (typeof Canvas !== 'undefined' && Canvas.getBoardColorId) ? Canvas.getBoardColorId() : null;
     pages[currentPage].history      = (typeof Canvas !== 'undefined' && Canvas.getHistory) ? Canvas.getHistory() : [];
     pages[currentPage].redoStack    = (typeof Canvas !== 'undefined' && Canvas.getRedoStack) ? Canvas.getRedoStack() : [];
+
+    // Save split screen state for this specific page
+    if (typeof WorkspaceSplit !== 'undefined' && WorkspaceSplit.serialize && WorkspaceSplit.getMode) {
+      const mode = WorkspaceSplit.getMode();
+      if (mode && mode !== 'normal') {
+        pages[currentPage].splitState = WorkspaceSplit.serialize();
+      } else {
+        pages[currentPage].splitState = null;
+      }
+    }
   }
 
   function loadCurrent() {
@@ -258,6 +269,17 @@ const App = (() => {
       hist,
       redoStk
     );
+
+    // Restore split screen mode for this page or ensure normal blank whiteboard
+    if (typeof WorkspaceSplit !== 'undefined') {
+      const savedSplit = pages[currentPage].splitState;
+      if (savedSplit && savedSplit.mode && savedSplit.mode !== 'normal') {
+        WorkspaceSplit.restore(savedSplit);
+      } else {
+        WorkspaceSplit.setMode('normal');
+      }
+    }
+
     UI.updateStatus();
     updatePageControls();
   }
@@ -281,6 +303,14 @@ const App = (() => {
 
   function executeClearCurrentPage() {
     closeClearModal();
+    if (typeof WorkspaceSplit !== 'undefined' && WorkspaceSplit.getMode() !== 'normal') {
+      const activeId = WorkspaceSplit.getActivePartitionId();
+      WorkspaceSplit.clearPartition(activeId);
+      showToastWithAction(`Partition ${activeId} cleared`, '↩ Undo Clear', () => {
+        WorkspaceSplit.undoActive();
+      });
+      return;
+    }
     if (typeof Canvas !== 'undefined' && Canvas.clearAll) {
       Canvas.clearAll();
       saveCurrent();
@@ -1362,11 +1392,31 @@ const App = (() => {
     get currentTool()  { return currentTool; },
     get currentColor() { return currentColor; },
     get penSize()      { return penSize; },
-    set penSize(v)     { penSize = v; },
+    set penSize(v)     {
+      penSize = v;
+      if (typeof WorkspaceSplit !== 'undefined' && WorkspaceSplit.getMode() !== 'normal') {
+        WorkspaceSplit.setActivePartitionSize(v);
+      }
+    },
     get eraserSize()   { return eraserSize; },
-    set eraserSize(v)  { eraserSize = v; },
-    setPenSize: (v) => { penSize = v; },
-    setEraserSize: (v) => { eraserSize = v; },
+    set eraserSize(v)  {
+      eraserSize = v;
+      if (typeof WorkspaceSplit !== 'undefined' && WorkspaceSplit.getMode() !== 'normal') {
+        WorkspaceSplit.setActivePartitionEraserSize(v);
+      }
+    },
+    setPenSize: (v) => {
+      penSize = v;
+      if (typeof WorkspaceSplit !== 'undefined' && WorkspaceSplit.getMode() !== 'normal') {
+        WorkspaceSplit.setActivePartitionSize(v);
+      }
+    },
+    setEraserSize: (v) => {
+      eraserSize = v;
+      if (typeof WorkspaceSplit !== 'undefined' && WorkspaceSplit.getMode() !== 'normal') {
+        WorkspaceSplit.setActivePartitionEraserSize(v);
+      }
+    },
     get activeChapter(){ return activeChapter; },
     get activeSubject(){ return activeSubject; },
     setBoardBrightness,
