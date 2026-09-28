@@ -911,6 +911,20 @@ body{display:flex;flex-direction:column;height:100vh;overflow:hidden;}
   flex-shrink: 0;
 }
 
+.tb-btn.math-sim-btn {
+  background: linear-gradient(135deg, rgba(56,189,248,0.14), rgba(14,165,233,0.1));
+  border-color: rgba(56,189,248,0.4);
+  color: #7dd3fc;
+  font-weight: 700;
+  gap: 5px;
+}
+.tb-btn.math-sim-btn:hover {
+  background: linear-gradient(135deg, rgba(56,189,248,0.28), rgba(14,165,233,0.25));
+  border-color: #38bdf8;
+  color: #ffffff;
+  box-shadow: 0 0 12px rgba(56,189,248,0.35);
+}
+
 /* ─── ENTIRE BOARD BRIGHTNESS CONTROL (STEPPER PILL & FLYOUT) ─── */
 .board-brightness-group {
   position: relative;
@@ -9075,6 +9089,246 @@ body.wp-resizing {
   height: 36px !important;
   font-size: 16px !important;
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   2D GRAPHABLE — CUSTOM EQUATION & INDEPENDENT VIEW SYSTEM
+   ═══════════════════════════════════════════════════════════════════ */
+#gos-custom-view-modal .bbm-content {
+  max-width: 680px;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 24px 28px;
+  border-radius: 18px;
+  background: rgba(11, 19, 41, 0.97);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(56, 189, 248, 0.25);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  color: #f8fafc;
+}
+
+.gos-cv-input-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.gos-cv-prefix {
+  font-family: var(--mono, monospace);
+  font-size: 18px;
+  font-weight: 800;
+  color: #38bdf8;
+  text-shadow: 0 0 12px rgba(56, 189, 248, 0.5);
+  flex-shrink: 0;
+}
+
+.gos-cv-input {
+  flex: 1;
+  height: 46px;
+  font-size: 16px;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  color: #fef08a;
+  background: rgba(15, 23, 42, 0.95);
+  border: 1.5px solid rgba(56, 189, 248, 0.45);
+  border-radius: 10px;
+  padding: 0 14px;
+  outline: none;
+  transition: all 0.2s ease;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.4);
+}
+
+.gos-cv-input:focus {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.25), inset 0 2px 4px rgba(0,0,0,0.4);
+  background: #091124;
+}
+
+.gos-cv-plot-btn {
+  height: 46px;
+  padding: 0 18px;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #0b1329;
+  background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%);
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 4px 14px rgba(56, 189, 248, 0.4);
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.gos-cv-plot-btn:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(56, 189, 248, 0.6);
+}
+
+.gos-cv-plot-btn:active {
+  transform: translateY(0);
+}
+
+.gos-cv-chips-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.gos-cv-chip {
+  padding: 4px 9px;
+  font-size: 12px;
+  font-family: var(--mono, monospace);
+  font-weight: 700;
+  color: #cbd5e1;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  user-select: none;
+}
+
+.gos-cv-chip:hover {
+  background: rgba(56, 189, 248, 0.18);
+  border-color: rgba(56, 189, 248, 0.45);
+  color: #38bdf8;
+  transform: translateY(-1px);
+}
+
+.gos-cv-sec-title {
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #94a3b8;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.gos-cv-params-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.gos-cv-param-card {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gos-cv-param-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: #f1f5f9;
+}
+
+.gos-cv-param-badge {
+  font-family: var(--mono, monospace);
+  font-size: 12px;
+  font-weight: 800;
+  padding: 1px 7px;
+  border-radius: 4px;
+}
+
+.gos-cv-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gos-cv-slider {
+  flex: 1;
+  -webkit-appearance: none;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 3px;
+  outline: none;
+  cursor: pointer;
+}
+
+.gos-cv-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: #38bdf8;
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.9);
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+
+.gos-cv-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+.gos-cv-num-input {
+  width: 58px;
+  height: 28px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 5px;
+  color: #ffffff;
+  font-family: var(--mono, monospace);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+  padding: 0 4px;
+}
+
+.gos-cv-bounds-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.gos-cv-bound-box {
+  background: rgba(15, 23, 42, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.gos-cv-bound-label {
+  font-size: 10px;
+  color: #94a3b8;
+  font-weight: 700;
+}
+
+.gos-cv-bound-input {
+  width: 100%;
+  height: 26px;
+  background: rgba(0,0,0,0.35);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 4px;
+  color: #f8fafc;
+  font-family: var(--mono, monospace);
+  font-size: 11.5px;
+  font-weight: 700;
+  text-align: center;
+  box-sizing: border-box;
+}
+
 
 
 

@@ -1083,6 +1083,7 @@ const App = (() => {
   // SIMULATION & IMMERSIVE STATE
   // ─────────────────────────────────────────────
   function isSimulationActive() {
+    if (window.MathSimulations && typeof MathSimulations.isVisible === 'function' && MathSimulations.isVisible()) return 'mathSim';
     if (window.PhysicsLab && typeof PhysicsLab.isVisible === 'function' && PhysicsLab.isVisible()) return 'physics';
     if (window.MathVisualizer && typeof MathVisualizer.isVisible === 'function' && MathVisualizer.isVisible()) return 'math';
     if (window.GraphEngine && typeof GraphEngine.isVisible === 'function' && GraphEngine.isVisible()) return 'graph';
@@ -1095,6 +1096,10 @@ const App = (() => {
       return;
     }
     const sim = isSimulationActive();
+    if (sim === 'mathSim' && window.MathSimulations && typeof MathSimulations.undo === 'function') {
+      MathSimulations.undo();
+      return;
+    }
     if (sim === 'physics' && window.PhysicsLab && typeof PhysicsLab.undo === 'function') {
       PhysicsLab.undo();
       return;
@@ -1118,6 +1123,10 @@ const App = (() => {
       return;
     }
     const sim = isSimulationActive();
+    if (sim === 'mathSim' && window.MathSimulations && typeof MathSimulations.redo === 'function') {
+      MathSimulations.redo();
+      return;
+    }
     if (sim === 'physics' && window.PhysicsLab && typeof PhysicsLab.redo === 'function') {
       PhysicsLab.redo();
       return;

@@ -62,17 +62,19 @@ const GraphObject = (() => {
     // ln ... to ln(...)
     s = s.replace(/ln\s+([a-z0-9_.]+)/gi, 'ln($1)');
 
-    // Implicit multiplication: number followed by variable or function or '('
+    // Implicit multiplication: number followed by variable, parameter, function or '('
     s = s.replace(/(\d(?:\.\d+)?)\s*([a-z(])/gi, '$1*$2');
+    // Parameter multiplication: e.g. ax -> a*x, bx -> b*x, 2a -> 2*a
+    s = s.replace(/\b([a-dhk])\s*([xy])\b/gi, '$1*$2');
     // ')' followed by number or variable or '('
     s = s.replace(/(\))\s*([0-9a-z(])/gi, '$1*$2');
-    // variable followed by '('
-    s = s.replace(/\b([xy])\s*\(/gi, '$1*(');
-    // ')' followed by variable
-    s = s.replace(/(\))\s*([xy])/gi, '$1*$2');
+    // variable/parameter followed by '('
+    s = s.replace(/\b([xyabchkd])\s*\(/gi, '$1*(');
+    // ')' followed by variable/parameter
+    s = s.replace(/(\))\s*([xyabchkd])/gi, '$1*$2');
 
-    // Negative variable: -x -> -1*x
-    s = s.replace(/(^|[(\-+*\/^<>=?:]|\&\&|\|\|)\s*-\s*([xy])\b/gi, '$1-1*$2');
+    // Negative variable or parameter: -x -> -1*x, -a -> -1*a
+    s = s.replace(/(^|[(\-+*\/^<>=?:]|\&\&|\|\|)\s*-\s*([xyabchkd])\b/gi, '$1-1*$2');
 
     return s;
   }
@@ -102,17 +104,17 @@ const GraphObject = (() => {
     return parsedBranches;
   }
 
-  function compilePiecewise(branches) {
+  function compilePiecewise(branches, params) {
     const compiled = branches.map(b => ({
-      condFn: b.cond ? compileSingle(b.cond) : () => true,
-      exprFn: compileSingle(b.expr)
+      condFn: b.cond ? compileSingle(b.cond, params) : () => true,
+      exprFn: compileSingle(b.expr, params)
     }));
 
-    return function evaluatePiecewise(x) {
+    return function evaluatePiecewise(x, extraParams) {
       for (const branch of compiled) {
-        const condMet = branch.condFn(x);
+        const condMet = branch.condFn(x, extraParams);
         if (condMet === true || condMet === 1 || (typeof condMet === 'number' && condMet > 0)) {
-          return branch.exprFn(x);
+          return branch.exprFn(x, extraParams);
         }
       }
       return NaN;
@@ -165,6 +167,8 @@ const GraphObject = (() => {
           tokens.push({ type: 'num', val: Math.PI });
         } else if (ident === 'e') {
           tokens.push({ type: 'num', val: Math.E });
+        } else if (['a', 'b', 'c', 'd', 'h', 'k', 'm'].includes(ident)) {
+          tokens.push({ type: 'param', val: ident });
         } else if ([
           'sin', 'cos', 'tan', 'csc', 'sec', 'cot',
           'asin', 'acos', 'atan', 'acsc', 'asec', 'acot',
@@ -205,7 +209,7 @@ const GraphObject = (() => {
     for (let i = 0; i < tokens.length; i++) {
       const t = tokens[i];
 
-      if (t.type === 'num' || t.type === 'var') {
+      if (t.type === 'num' || t.type === 'var' || t.type === 'param') {
         output.push(t);
       } else if (t.type === 'fn') {
         ops.push(t);
@@ -250,19 +254,27 @@ const GraphObject = (() => {
     return output;
   }
 
-  function compileSingle(exprStr) {
+  function compileSingle(exprStr, defaultParams) {
     try {
       const cleaned = normalize(exprStr);
       const tokens = tokenize(cleaned);
       const rpn = infixToRPN(tokens);
 
-      return function evaluate(val) {
+      return function evaluate(val, extraParams) {
         const stack = [];
+        const p = extraParams || defaultParams || (modalTargetGraph && modalTargetGraph.params) || (editingGraph && editingGraph.params) || {};
         for (const t of rpn) {
           if (t.type === 'num') {
             stack.push(t.val);
           } else if (t.type === 'var') {
             stack.push(val);
+          } else if (t.type === 'param') {
+            let pVal = (p && typeof p[t.val] === 'number') ? p[t.val] : undefined;
+            if (pVal === undefined) {
+              if (t.val === 'a' || t.val === 'b' || t.val === 'm') pVal = 1;
+              else pVal = 0;
+            }
+            stack.push(pVal);
           } else if (t.type === 'fn') {
             const a = stack.pop();
             switch (t.val) {
@@ -343,12 +355,12 @@ const GraphObject = (() => {
     }
   }
 
-  function compile(exprStr) {
+  function compile(exprStr, params) {
     const pw = parsePiecewise(exprStr);
     if (pw && pw.length > 0) {
-      return compilePiecewise(pw);
+      return compilePiecewise(pw, params);
     }
-    return compileSingle(exprStr);
+    return compileSingle(exprStr, params);
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -1258,6 +1270,74 @@ const GraphObject = (() => {
     ctx.restore();
   }
 
+  // ── Extrema Finder: finds local & absolute minima/maxima for y=f(x) ──
+  function findExtrema(fn, xMin, xMax, options) {
+    const opts = options || {};
+    const scanN   = opts.scanN   || 600;   // coarse scan samples
+    const refineN = opts.refineN || 40;    // bisection iterations
+    const tol     = opts.tol     || 1e-8;
+
+    const dx = (xMax - xMin) / scanN;
+
+    // Helper: derivative by central difference
+    const h = Math.max(1e-7, dx * 0.01);
+    function deriv(x) {
+      const yp = fn(x + h);
+      const ym = fn(x - h);
+      if (!isFinite(yp) || !isFinite(ym)) return NaN;
+      return (yp - ym) / (2 * h);
+    }
+
+    const results = [];
+    const seen    = [];           // de-duplicate nearby x values
+
+    let prevD = deriv(xMin + dx * 0.5);
+
+    for (let i = 1; i <= scanN; i++) {
+      const x0 = xMin + (i - 1) * dx;
+      const x1 = xMin +  i      * dx;
+      const d0 = prevD;
+      const d1 = deriv(x1 + dx * 0.5);
+      prevD = d1;
+
+      if (!isFinite(d0) || !isFinite(d1)) continue;
+      if (d0 * d1 >= 0) continue;   // no sign change → no extremum
+
+      // Bisection to pinpoint the zero of f'(x)
+      let lo = x0, hi = x1;
+      for (let k = 0; k < refineN; k++) {
+        const mid  = (lo + hi) / 2;
+        const dmid = deriv(mid);
+        if (!isFinite(dmid) || Math.abs(hi - lo) < tol) break;
+        if (d0 * dmid <= 0) hi = mid;
+        else                lo = mid;
+      }
+      const xc = (lo + hi) / 2;
+      const yc = fn(xc);
+      if (!isFinite(yc)) continue;
+
+      // De-duplicate (skip if another result is within 2*dx)
+      if (seen.some(s => Math.abs(s - xc) < dx * 2)) continue;
+      seen.push(xc);
+
+      // Classify: local min (d0<0→d1>0), local max (d0>0→d1<0)
+      const kind = (d0 < 0) ? 'min' : 'max';
+      results.push({ x: xc, y: yc, kind });
+    }
+
+    // Mark absolute min/max among the collected results (only in-domain points)
+    if (results.length) {
+      let absMinY = Infinity, absMaxY = -Infinity;
+      results.forEach(r => { absMinY = Math.min(absMinY, r.y); absMaxY = Math.max(absMaxY, r.y); });
+      results.forEach(r => {
+        r.isAbsMin = (r.y === absMinY);
+        r.isAbsMax = (r.y === absMaxY);
+      });
+    }
+
+    return results;
+  }
+
   function draw(ctx, g) {
     if (!g || g.w <= 0 || g.h <= 0) return;
 
@@ -1476,7 +1556,7 @@ const GraphObject = (() => {
         ctx.lineWidth = 1.6;
         ctx.setLineDash([5, 4]);
 
-        const parentFn = compile(g.activeParentExpr);
+        const parentFn = compile(g.activeParentExpr, g.params);
         ctx.beginPath();
         let pStarted = false;
         let pLast = 0;
@@ -1514,7 +1594,7 @@ const GraphObject = (() => {
         if (!eq.visible || !eq.expr) return;
 
         const isHorizontal = !!eq.isXEquals;
-        const fn = compile(eq.expr);
+        const fn = compile(eq.expr, g.params);
         ctx.strokeStyle = eq.color || '#38bdf8';
         ctx.lineWidth = eq.lineWidth || 2.8;
         ctx.lineCap = 'round';
@@ -1650,6 +1730,109 @@ const GraphObject = (() => {
             }
           }
         }
+      });
+    }
+
+    // ── Extrema Overlay (Min / Max markers) ──
+    if (g.showExtrema && g.equations && g.equations.length) {
+      g.equations.forEach(eq => {
+        if (!eq.visible || !eq.expr || eq.isXEquals) return;
+        const fn = compile(eq.expr, g.params);
+        const curveColor = eq.color || '#38bdf8';
+
+        // Compute domain used for this equation
+        const hasDomMin = (eq.domainMin !== null && eq.domainMin !== undefined && eq.domainMin !== '' && !isNaN(parseFloat(eq.domainMin)));
+        const hasDomMax = (eq.domainMax !== null && eq.domainMax !== undefined && eq.domainMax !== '' && !isNaN(parseFloat(eq.domainMax)));
+        const scanMin = hasDomMin ? Math.max(xMin, parseFloat(eq.domainMin)) : xMin;
+        const scanMax = hasDomMax ? Math.min(xMax, parseFloat(eq.domainMax)) : xMax;
+        if (scanMin >= scanMax) return;
+
+        const extrema = findExtrema(fn, scanMin, scanMax);
+        if (!extrema.length) return;
+
+        extrema.forEach(pt => {
+          // Only draw if within visible viewport
+          if (pt.x < xMin || pt.x > xMax || pt.y < yMin || pt.y > yMax) return;
+
+          const sx = toScreenX(pt.x);
+          const sy = toScreenY(pt.y);
+          const isMax = (pt.kind === 'max');
+
+          // Dot shadow glow
+          ctx.save();
+          ctx.shadowBlur = 10;
+          ctx.shadowColor = isMax ? 'rgba(251,191,36,0.6)' : 'rgba(129,140,248,0.6)';
+
+          // Outer ring
+          ctx.beginPath();
+          ctx.arc(sx, sy, 8, 0, Math.PI * 2);
+          ctx.fillStyle = isMax ? 'rgba(251,191,36,0.18)' : 'rgba(129,140,248,0.18)';
+          ctx.fill();
+          ctx.restore();
+
+          // Inner filled dot
+          ctx.beginPath();
+          ctx.arc(sx, sy, 5, 0, Math.PI * 2);
+          ctx.fillStyle = isMax ? '#fbbf24' : '#818cf8';
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 1.5;
+          ctx.fill();
+          ctx.stroke();
+
+          // Absolute min/max crown indicator
+          if (pt.isAbsMax || pt.isAbsMin) {
+            ctx.beginPath();
+            ctx.arc(sx, sy, 8.5, 0, Math.PI * 2);
+            ctx.strokeStyle = pt.isAbsMax ? '#fde68a' : '#c7d2fe';
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([3, 2]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+          }
+
+          // Label: build text
+          const xRnd = Math.round(pt.x * 1000) / 1000;
+          const yRnd = Math.round(pt.y * 1000) / 1000;
+          const kindLabel = isMax
+            ? (pt.isAbsMax ? '▲ Abs Max' : '△ Local Max')
+            : (pt.isAbsMin ? '▼ Abs Min' : '▽ Local Min');
+          const coordLabel = `(${xRnd}, ${yRnd})`;
+
+          ctx.font = 'bold 10px system-ui, sans-serif';
+          const lw1 = ctx.measureText(kindLabel).width;
+          ctx.font = '10px monospace';
+          const lw2 = ctx.measureText(coordLabel).width;
+          const boxW = Math.max(lw1, lw2) + 14;
+          const boxH = 32;
+
+          // Position box: prefer above the dot, flip below if near top edge
+          let boxX = sx - boxW / 2;
+          let boxY = sy - boxH - 12;
+          if (boxY < plotY + 2) boxY = sy + 12;
+          boxX = Math.max(plotX + 2, Math.min(plotX + plotW - boxW - 2, boxX));
+
+          // Tooltip box background
+          ctx.fillStyle = isMax ? 'rgba(120, 80, 0, 0.88)' : 'rgba(40, 40, 90, 0.88)';
+          ctx.strokeStyle = isMax ? '#fbbf24' : '#818cf8';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(boxX, boxY, boxW, boxH, 6);
+          else ctx.rect(boxX, boxY, boxW, boxH);
+          ctx.fill();
+          ctx.stroke();
+
+          // Kind label
+          ctx.fillStyle = isMax ? '#fde68a' : '#c7d2fe';
+          ctx.font = 'bold 10px system-ui, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'top';
+          ctx.fillText(kindLabel, boxX + boxW / 2, boxY + 5);
+
+          // Coordinate label
+          ctx.fillStyle = '#f8fafc';
+          ctx.font = '10px monospace';
+          ctx.fillText(coordLabel, boxX + boxW / 2, boxY + 18);
+        });
       });
     }
 
@@ -2054,6 +2237,86 @@ const GraphObject = (() => {
       }
     }
 
+    // ── Button: "📊 Min/Max" (Extrema Toggle) ──
+    if (curLeft + 78 <= rightBoundary) {
+      ctx.font = 'bold 11px system-ui, sans-serif';
+      const exOn  = !!g.showExtrema;
+      const exText = '📊 Min/Max';
+      const exW = Math.round(ctx.measureText(exText).width + 18);
+
+      if (curLeft + exW <= rightBoundary) {
+        const exX = curLeft;
+        const exY = gy + 8;
+        const exH = 22;
+
+        if (exOn) {
+          ctx.fillStyle = isLight ? 'rgba(245, 158, 11, 0.22)' : 'rgba(251, 191, 36, 0.22)';
+          ctx.strokeStyle = isLight ? 'rgba(217, 119, 6, 0.7)' : 'rgba(251, 191, 36, 0.75)';
+        } else {
+          ctx.fillStyle = isLight ? 'rgba(245, 158, 11, 0.09)' : 'rgba(251, 191, 36, 0.10)';
+          ctx.strokeStyle = isLight ? 'rgba(217, 119, 6, 0.3)' : 'rgba(251, 191, 36, 0.32)';
+        }
+        ctx.lineWidth = exOn ? 1.5 : 1;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(exX, exY, exW, exH, 11);
+        else ctx.rect(exX, exY, exW, exH);
+        ctx.fill();
+        ctx.stroke();
+
+        // Active glow ring
+        if (exOn) {
+          ctx.strokeStyle = isLight ? 'rgba(245, 158, 11, 0.35)' : 'rgba(251, 191, 36, 0.35)';
+          ctx.lineWidth = 3.5;
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(exX - 1.5, exY - 1.5, exW + 3, exH + 3, 12.5);
+          else ctx.rect(exX - 1.5, exY - 1.5, exW + 3, exH + 3);
+          ctx.stroke();
+        }
+
+        ctx.fillStyle = exOn
+          ? (isLight ? '#92400e' : '#fde68a')
+          : (isLight ? '#b45309' : '#fbbf24');
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = exOn ? 'bold 11px system-ui, sans-serif' : '600 11px system-ui, sans-serif';
+        ctx.fillText(exText, exX + exW / 2, exY + exH / 2);
+
+        g._headerHitboxes.push({ type: 'extrema', x: exX, y: exY, w: exW, h: exH });
+        curLeft += exW + 6;
+      }
+    }
+
+    // ── Button: "⚡ Custom View" (Custom Equation & Independent Values System) ──
+    if (curLeft + 85 <= rightBoundary) {
+      ctx.font = 'bold 11px system-ui, sans-serif';
+      const cvText = '⚡ Custom View';
+      const cvW = Math.round(ctx.measureText(cvText).width + 18);
+
+      if (curLeft + cvW <= rightBoundary) {
+        const cvX = curLeft;
+        const cvY = gy + 8;
+        const cvH = 22;
+
+        ctx.fillStyle = isLight ? 'rgba(168, 85, 247, 0.14)' : 'rgba(168, 85, 247, 0.20)';
+        ctx.strokeStyle = isLight ? 'rgba(168, 85, 247, 0.55)' : 'rgba(168, 85, 247, 0.70)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(cvX, cvY, cvW, cvH, 11);
+        else ctx.rect(cvX, cvY, cvW, cvH);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = isLight ? '#7e22ce' : '#e9d5ff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = 'bold 11px system-ui, sans-serif';
+        ctx.fillText(cvText, cvX + cvW / 2, cvY + cvH / 2);
+
+        g._headerHitboxes.push({ type: 'customView', x: cvX, y: cvY, w: cvW, h: cvH });
+        curLeft += cvW + 6;
+      }
+    }
+
     // ── 3. Graph Background / Board Theme & Curve Line Color Palettes ──
     const availSwatchW = rightBoundary - curLeft;
     if (availSwatchW >= 80) {
@@ -2200,7 +2463,7 @@ const GraphObject = (() => {
     if (g.equations && g.equations.length) {
       g.equations.forEach(eq => {
         if (!eq.visible || !eq.expr) return;
-        const fn = compile(eq.expr);
+        const fn = compile(eq.expr, g.params);
         const gy = fn(gx);
         if (typeof gy === 'number' && isFinite(gy)) {
           const sy = plotY + plotH - ((gy - g.yMin) / spanY) * plotH;
@@ -2241,7 +2504,10 @@ const GraphObject = (() => {
             else if (h.action === 'zoomOut') zoom(g, 1.25);
             return true;
           } else if (h.type === 'equation') {
-            openQuickEditEquation(g, h.eqIndex);
+            openCustomViewModal(g, h.eqIndex);
+            return true;
+          } else if (h.type === 'customView') {
+            openCustomViewModal(g, 0);
             return true;
           } else if (h.type === 'removeEq') {
             if (g.equations && g.equations.length > 1) {
@@ -2258,6 +2524,14 @@ const GraphObject = (() => {
             return true;
           } else if (h.type === 'domainRange') {
             openDomainRangeModal(g);
+            return true;
+          } else if (h.type === 'extrema') {
+            g.showExtrema = !g.showExtrema;
+            if (typeof Canvas !== 'undefined' && Canvas.renderShapes) Canvas.renderShapes();
+            if (typeof Canvas !== 'undefined' && Canvas.saveHistory) Canvas.saveHistory();
+            if (typeof App !== 'undefined' && App.showToast) {
+              App.showToast(g.showExtrema ? '📊 Min/Max markers ON' : '📊 Min/Max markers OFF');
+            }
             return true;
           } else if (h.type === 'lineColor') {
             if (g.equations && g.equations.length) {
@@ -2350,7 +2624,7 @@ const GraphObject = (() => {
 
     g.equations.forEach(eq => {
       if (!eq.visible || !eq.expr) return;
-      const fn = compile(eq.expr);
+      const fn = compile(eq.expr, g.params);
       for (let i = 0; i <= testPoints; i++) {
         const x = domainXMin + i * dx;
         const y = fn(x);
@@ -2405,7 +2679,7 @@ const GraphObject = (() => {
 
     equations.forEach(eq => {
       if (!eq.visible || !eq.expr) return;
-      const fn = compile(eq.expr);
+      const fn = compile(eq.expr, g.params);
       for (let i = 0; i <= samples; i++) {
         const x = xMin + i * dx;
         const y = fn(x);
@@ -2551,120 +2825,226 @@ const GraphObject = (() => {
     if (modal) modal.remove();
   }
 
-  function openQuickEditEquation(g, eqIndex) {
-    if (!g || !g.equations || !g.equations[eqIndex]) return;
-    const eq = g.equations[eqIndex];
+  let activeCustomViewEqIdx = 0;
+
+  function openCustomViewModal(g, eqIndex = 0) {
+    if (!g) return;
+    closeCustomViewModal();
     closeQuickCompareModal();
     closeDomainRangeModal();
     modalTargetGraph = g;
 
+    if (!g.equations || !g.equations.length) {
+      g.equations = [{ id: 1, label: 'f₁(x)', expr: g.expr || 'x^2', color: g.color || '#38bdf8', lineWidth: 2.8, visible: true }];
+    }
+    activeCustomViewEqIdx = Math.max(0, Math.min(eqIndex, g.equations.length - 1));
+    const eq = g.equations[activeCustomViewEqIdx];
+
+    // Ensure parameters exist
+    if (!g.params) g.params = {};
+    if (g.params.a === undefined) g.params.a = 1;
+    if (g.params.b === undefined) g.params.b = 1;
+    if (g.params.c === undefined) g.params.c = 0;
+    if (g.params.k === undefined) g.params.k = 0;
+
     let selectedColor = eq.color || '#38bdf8';
 
     const modal = document.createElement('div');
-    modal.id = 'gos-quick-edit-modal';
+    modal.id = 'gos-custom-view-modal';
     modal.className = 'board-bg-modal open';
     modal.innerHTML = `
-      <div class="bbm-overlay" onclick="document.getElementById('gos-quick-edit-modal')?.remove()"></div>
-      <div class="bbm-content" style="max-width:560px;padding:26px;border-radius:18px;background:rgba(11,19,41,0.96);box-shadow:0 24px 60px rgba(0,0,0,0.7);backdrop-filter:blur(18px);border:1px solid rgba(56,189,248,0.25);">
-        <div class="bbm-header" style="margin-bottom:18px;display:flex;justify-content:space-between;align-items:center;">
+      <div class="bbm-overlay" onclick="GraphObject.closeCustomViewModal()"></div>
+      <div class="bbm-content">
+        <!-- Header -->
+        <div class="bbm-header" style="margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;">
           <div class="bbm-title-wrap" style="display:flex;gap:12px;align-items:center;">
-            <span style="font-size:24px;">✏️</span>
+            <span style="font-size:26px;">⚡</span>
             <div>
-              <div class="bbm-title" style="font-size:18px;color:#f8fafc;font-weight:700;">Edit Function: ${eq.label || 'f(x)'}</div>
-              <div class="bbm-subtitle" style="font-size:12.5px;color:#94a3b8;margin-top:2px;">Update mathematical formula, domain bounds, and curve color.</div>
+              <div class="bbm-title" style="font-size:18px;color:#f8fafc;font-weight:800;letter-spacing:0.02em;">Custom Equation &amp; View System</div>
+              <div class="bbm-subtitle" style="font-size:12px;color:#94a3b8;margin-top:2px;">Type any formula, press <b>Enter</b> to plot immediately, and adjust independent parameters live.</div>
             </div>
           </div>
-          <button class="bbm-close" onclick="document.getElementById('gos-quick-edit-modal')?.remove()" style="background:rgba(255,255,255,0.08);border:none;color:#cbd5e1;font-size:18px;width:32px;height:32px;border-radius:50%;cursor:pointer;">✕</button>
+          <button class="bbm-close" onclick="GraphObject.closeCustomViewModal()" style="background:rgba(255,255,255,0.08);border:none;color:#cbd5e1;font-size:18px;width:32px;height:32px;border-radius:50%;cursor:pointer;">✕</button>
         </div>
 
-        <div style="margin-bottom:14px;">
-          <label style="font-size:13px;font-weight:700;color:#cbd5e1;display:block;margin-bottom:8px;">Equation Formula:</label>
-          <div style="display:flex;gap:10px;align-items:center;">
-            <span style="font-family:var(--mono);font-size:16px;font-weight:700;color:${selectedColor};" id="gos-qe-prefix">${eq.label || 'y'} =</span>
-            <input type="text" id="gos-qe-input" class="gos-input" value="${eq.expr}" style="flex:1;height:44px;font-size:15px;font-weight:700;color:#f8fafc;background:rgba(255,255,255,0.06);border:1.5px solid rgba(56,189,248,0.4);border-radius:10px;padding:0 14px;" placeholder="e.g. sin(x), x^2 - 4">
+        <!-- Section 1: Type Any Equation & Enter -->
+        <div style="margin-bottom:12px;">
+          <div class="gos-cv-sec-title">
+            <span style="color:#38bdf8;">⌨️ Function Formula (${eq.label || 'f(x)'})</span>
+            <span style="font-size:10px;color:#4ade80;background:rgba(74,222,128,0.15);padding:2px 6px;border-radius:4px;">⏎ Press Enter to Plot</span>
           </div>
-        </div>
+          <div class="gos-cv-input-row">
+            <span class="gos-cv-prefix" id="gos-cv-prefix">${eq.label ? eq.label + ' =' : 'y ='}</span>
+            <input type="text" id="gos-cv-input" class="gos-cv-input" value="${eq.expr}" placeholder="Type any equation: e.g. sin(x) + cos(2x), a*x^2 + b*x + c, x^3 - 3x..." autofocus>
+            <button type="button" id="gos-cv-plot-btn" class="gos-cv-plot-btn" onclick="GraphObject.applyCustomEquationFromModal()">
+              <span>⏎ Plot Graph</span>
+            </button>
+          </div>
 
-        <!-- Editable Function Domain -->
-        <div class="gos-param-card" style="box-sizing:border-box;width:100%;margin-bottom:14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:12px 14px;overflow:hidden;">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-            <strong style="color:#f8fafc;font-size:13px;">Function Domain (x ∈ [min, max]):</strong>
-            <span style="font-size:11.5px;color:#94a3b8;">Restricts where function is evaluated</span>
-          </div>
-          <div class="gos-dr-grid" style="display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:10px;margin-bottom:8px;width:100%;box-sizing:border-box;">
-            <div class="gos-dr-grid-col" style="min-width:0;box-sizing:border-box;">
-              <div class="gos-dr-input-row" style="display:flex;align-items:center;gap:6px;width:100%;min-width:0;box-sizing:border-box;">
-                <button type="button" id="gos-qe-dmin-inc" class="gos-dr-inc-btn" onclick="this.textContent = this.textContent === '[' ? '(' : '['" style="flex-shrink:0;height:36px;width:32px;font-size:16px;font-weight:700;background:rgba(255,255,255,0.08);color:#38bdf8;border:1px solid rgba(56,189,248,0.3);border-radius:6px;cursor:pointer;box-sizing:border-box;display:flex;align-items:center;justify-content:center;">${eq.domainMinInc !== false ? '[' : '('}</button>
-                <input type="number" step="0.5" id="gos-qe-dmin" class="gos-input" value="${eq.domainMin !== null && eq.domainMin !== undefined ? eq.domainMin : ''}" placeholder="-∞ (no min)" style="flex:1 1 0;min-width:0;width:0;height:36px;font-size:13.5px;color:#f8fafc;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:0 8px;box-sizing:border-box;">
-              </div>
-            </div>
-            <div class="gos-dr-grid-col" style="min-width:0;box-sizing:border-box;">
-              <div class="gos-dr-input-row" style="display:flex;align-items:center;gap:6px;width:100%;min-width:0;box-sizing:border-box;">
-                <input type="number" step="0.5" id="gos-qe-dmax" class="gos-input" value="${eq.domainMax !== null && eq.domainMax !== undefined ? eq.domainMax : ''}" placeholder="+∞ (no max)" style="flex:1 1 0;min-width:0;width:0;height:36px;font-size:13.5px;color:#f8fafc;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:0 8px;box-sizing:border-box;">
-                <button type="button" id="gos-qe-dmax-inc" class="gos-dr-inc-btn" onclick="this.textContent = this.textContent === ']' ? ')' : ']'" style="flex-shrink:0;height:36px;width:32px;font-size:16px;font-weight:700;background:rgba(255,255,255,0.08);color:#38bdf8;border:1px solid rgba(56,189,248,0.3);border-radius:6px;cursor:pointer;box-sizing:border-box;display:flex;align-items:center;justify-content:center;">${eq.domainMaxInc !== false ? ']' : ')'}</button>
-              </div>
-            </div>
-          </div>
-          <div style="display:flex;flex-wrap:wrap;gap:5px;">
-            <button type="button" class="gos-preset-chip" style="font-size:11.5px;padding:3px 8px;border-radius:5px;background:rgba(255,255,255,0.06);color:#f8fafc;border:1px solid rgba(255,255,255,0.1);cursor:pointer;" onclick="document.getElementById('gos-qe-dmin').value='';document.getElementById('gos-qe-dmax').value='';">ℝ (All Reals)</button>
-            <button type="button" class="gos-preset-chip" style="font-size:11.5px;padding:3px 8px;border-radius:5px;background:rgba(255,255,255,0.06);color:#f8fafc;border:1px solid rgba(255,255,255,0.1);cursor:pointer;" onclick="document.getElementById('gos-qe-dmin').value='0';document.getElementById('gos-qe-dmax').value='';">x ≥ 0</button>
-            <button type="button" class="gos-preset-chip" style="font-size:11.5px;padding:3px 8px;border-radius:5px;background:rgba(255,255,255,0.06);color:#f8fafc;border:1px solid rgba(255,255,255,0.1);cursor:pointer;" onclick="document.getElementById('gos-qe-dmin').value='-2';document.getElementById('gos-qe-dmax').value='3';">[-2, 3]</button>
-            <button type="button" class="gos-preset-chip" style="font-size:11.5px;padding:3px 8px;border-radius:5px;background:rgba(255,255,255,0.06);color:#f8fafc;border:1px solid rgba(255,255,255,0.1);cursor:pointer;" onclick="document.getElementById('gos-qe-dmin').value='-5';document.getElementById('gos-qe-dmax').value='5';">[-5, 5]</button>
-          </div>
-        </div>
-
-        <!-- Editable Function Range -->
-        <div class="gos-param-card" style="box-sizing:border-box;width:100%;margin-bottom:14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:12px 14px;overflow:hidden;">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-            <strong style="color:#f8fafc;font-size:13px;">Function Range (y ∈ [min, max]):</strong>
-            <span style="font-size:11.5px;color:#94a3b8;">Restricts vertical curve values</span>
-          </div>
-          <div class="gos-dr-grid" style="display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:10px;margin-bottom:8px;width:100%;box-sizing:border-box;">
-            <div class="gos-dr-grid-col" style="min-width:0;box-sizing:border-box;">
-              <div class="gos-dr-input-row" style="display:flex;align-items:center;gap:6px;width:100%;min-width:0;box-sizing:border-box;">
-                <button type="button" id="gos-qe-rmin-inc" class="gos-dr-inc-btn" onclick="this.textContent = this.textContent === '[' ? '(' : '['" style="flex-shrink:0;height:36px;width:32px;font-size:16px;font-weight:700;background:rgba(255,255,255,0.08);color:#38bdf8;border:1px solid rgba(56,189,248,0.3);border-radius:6px;cursor:pointer;box-sizing:border-box;display:flex;align-items:center;justify-content:center;">${eq.rangeMinInc !== false ? '[' : '('}</button>
-                <input type="number" step="0.5" id="gos-qe-rmin" class="gos-input" value="${eq.rangeMin !== null && eq.rangeMin !== undefined ? eq.rangeMin : ''}" placeholder="-∞ (no min)" style="flex:1 1 0;min-width:0;width:0;height:36px;font-size:13.5px;color:#f8fafc;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:0 8px;box-sizing:border-box;">
-              </div>
-            </div>
-            <div class="gos-dr-grid-col" style="min-width:0;box-sizing:border-box;">
-              <div class="gos-dr-input-row" style="display:flex;align-items:center;gap:6px;width:100%;min-width:0;box-sizing:border-box;">
-                <input type="number" step="0.5" id="gos-qe-rmax" class="gos-input" value="${eq.rangeMax !== null && eq.rangeMax !== undefined ? eq.rangeMax : ''}" placeholder="+∞ (no max)" style="flex:1 1 0;min-width:0;width:0;height:36px;font-size:13.5px;color:#f8fafc;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:0 8px;box-sizing:border-box;">
-                <button type="button" id="gos-qe-rmax-inc" class="gos-dr-inc-btn" onclick="this.textContent = this.textContent === ']' ? ')' : ']'" style="flex-shrink:0;height:36px;width:32px;font-size:16px;font-weight:700;background:rgba(255,255,255,0.08);color:#38bdf8;border:1px solid rgba(56,189,248,0.3);border-radius:6px;cursor:pointer;box-sizing:border-box;display:flex;align-items:center;justify-content:center;">${eq.rangeMaxInc !== false ? ']' : ')'}</button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Color Selection -->
-        <div style="margin-bottom:18px;">
-          <label style="font-size:12px;font-weight:600;color:#94a3b8;display:block;margin-bottom:8px;">Curve Color:</label>
-          <div style="display:flex;gap:12px;align-items:center;">
-            ${LINE_COLORS.map(c => `
-              <button type="button" class="gos-theme-swatch ${c.color.toLowerCase() === selectedColor.toLowerCase() ? 'active' : ''}" 
-                style="width:30px;height:30px;border-radius:50%;background:${c.color};border:2px solid ${c.color.toLowerCase() === selectedColor.toLowerCase() ? '#ffffff' : 'transparent'};cursor:pointer;transition:transform 0.15s ease;"
-                title="${c.name}"
-                onclick="
-                  selectedColor = '${c.color}';
-                  document.querySelectorAll('#gos-quick-edit-modal .gos-theme-swatch').forEach(s => { s.classList.remove('active'); s.style.borderColor = 'transparent'; });
-                  this.classList.add('active');
-                  this.style.borderColor = '#ffffff';
-                  document.getElementById('gos-qe-prefix').style.color = '${c.color}';
-                ">
-              </button>
+          <!-- Quick Math Chips -->
+          <div class="gos-cv-chips-wrap">
+            <span style="font-size:10.5px;color:#94a3b8;align-self:center;margin-right:4px;">Insert:</span>
+            ${['x', 'x^2', 'x^3', 'sqrt(x)', 'sin(x)', 'cos(x)', 'tan(x)', 'exp(x)', 'ln(x)', 'abs(x)', '1/x', '(', ')', '+', '-', '*', '/', '^', 'pi', 'a', 'b', 'c', 'k'].map(sym => `
+              <button type="button" class="gos-cv-chip" onclick="GraphObject.insertCustomSymbol('${sym}')">${sym}</button>
             `).join('')}
           </div>
         </div>
 
-        <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid rgba(255,255,255,0.1);padding-top:16px;">
-          ${g.equations.length > 1 ? `
-            <button type="button" class="gos-btn gos-btn-secondary" style="color:#f43f5e;border-color:rgba(244,63,94,0.3);padding:10px 16px;font-size:13.5px;cursor:pointer;border-radius:10px;" id="gos-qe-delete-btn">
-              🗑️ Delete Curve
-            </button>
-          ` : `<span></span>`}
+        <!-- Section 2: Independent Value Controls (a, b, c, k) -->
+        <div style="margin-bottom:14px;">
+          <div class="gos-cv-sec-title">
+            <span style="color:#c084fc;">🎛️ Independent Parameter Values (Change Values Individually)</span>
+            <span style="font-size:10.5px;color:#cbd5e1;font-weight:600;">Live Real-Time Update</span>
+          </div>
+          <div class="gos-cv-params-grid">
+            <!-- Parameter a -->
+            <div class="gos-cv-param-card" style="border-left:3.5px solid #38bdf8;">
+              <div class="gos-cv-param-head">
+                <span style="color:#38bdf8;">Parameter a (Scale / Mult)</span>
+                <span class="gos-cv-param-badge" id="gos-cv-disp-a" style="background:rgba(56,189,248,0.18);color:#38bdf8;">${g.params.a > 0 ? '+' + g.params.a : g.params.a}</span>
+              </div>
+              <div class="gos-cv-slider-row">
+                <input type="range" class="gos-cv-slider" id="gos-cv-range-a" min="-10" max="10" step="0.1" value="${g.params.a}" oninput="GraphObject.setCustomParam(null, 'a', this.value)">
+                <input type="number" step="0.1" class="gos-cv-num-input" id="gos-cv-val-a" value="${g.params.a}" oninput="GraphObject.setCustomParam(null, 'a', this.value)">
+              </div>
+              <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:2px;">
+                ${[0.5, 1, 2, 3, -1].map(p => `
+                  <button type="button" class="gos-cv-chip" style="padding:2px 6px;font-size:10.5px;" onclick="GraphObject.setCustomParam(null, 'a', ${p})">${p > 0 ? '+' + p : p}</button>
+                `).join('')}
+              </div>
+            </div>
+
+            <!-- Parameter b -->
+            <div class="gos-cv-param-card" style="border-left:3.5px solid #4ade80;">
+              <div class="gos-cv-param-head">
+                <span style="color:#4ade80;">Parameter b (Frequency / Speed)</span>
+                <span class="gos-cv-param-badge" id="gos-cv-disp-b" style="background:rgba(74,222,128,0.18);color:#4ade80;">${g.params.b > 0 ? '+' + g.params.b : g.params.b}</span>
+              </div>
+              <div class="gos-cv-slider-row">
+                <input type="range" class="gos-cv-slider" id="gos-cv-range-b" min="-10" max="10" step="0.1" value="${g.params.b}" oninput="GraphObject.setCustomParam(null, 'b', this.value)">
+                <input type="number" step="0.1" class="gos-cv-num-input" id="gos-cv-val-b" value="${g.params.b}" oninput="GraphObject.setCustomParam(null, 'b', this.value)">
+              </div>
+              <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:2px;">
+                ${[0.5, 1, 2, 3, -1].map(p => `
+                  <button type="button" class="gos-cv-chip" style="padding:2px 6px;font-size:10.5px;" onclick="GraphObject.setCustomParam(null, 'b', ${p})">${p > 0 ? '+' + p : p}</button>
+                `).join('')}
+              </div>
+            </div>
+
+            <!-- Parameter c -->
+            <div class="gos-cv-param-card" style="border-left:3.5px solid #fbbf24;">
+              <div class="gos-cv-param-head">
+                <span style="color:#fbbf24;">Parameter c (Phase / Intercept)</span>
+                <span class="gos-cv-param-badge" id="gos-cv-disp-c" style="background:rgba(251,191,36,0.18);color:#fbbf24;">${g.params.c > 0 ? '+' + g.params.c : g.params.c}</span>
+              </div>
+              <div class="gos-cv-slider-row">
+                <input type="range" class="gos-cv-slider" id="gos-cv-range-c" min="-10" max="10" step="0.1" value="${g.params.c}" oninput="GraphObject.setCustomParam(null, 'c', this.value)">
+                <input type="number" step="0.1" class="gos-cv-num-input" id="gos-cv-val-c" value="${g.params.c}" oninput="GraphObject.setCustomParam(null, 'c', this.value)">
+              </div>
+              <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:2px;">
+                ${[0, 1, 2, -1, -2].map(p => `
+                  <button type="button" class="gos-cv-chip" style="padding:2px 6px;font-size:10.5px;" onclick="GraphObject.setCustomParam(null, 'c', ${p})">${p > 0 ? '+' + p : p}</button>
+                `).join('')}
+              </div>
+            </div>
+
+            <!-- Parameter k -->
+            <div class="gos-cv-param-card" style="border-left:3.5px solid #f472b6;">
+              <div class="gos-cv-param-head">
+                <span style="color:#f472b6;">Parameter k (Vertical Shift)</span>
+                <span class="gos-cv-param-badge" id="gos-cv-disp-k" style="background:rgba(244,114,182,0.18);color:#f472b6;">${g.params.k > 0 ? '+' + g.params.k : g.params.k}</span>
+              </div>
+              <div class="gos-cv-slider-row">
+                <input type="range" class="gos-cv-slider" id="gos-cv-range-k" min="-10" max="10" step="0.1" value="${g.params.k}" oninput="GraphObject.setCustomParam(null, 'k', this.value)">
+                <input type="number" step="0.1" class="gos-cv-num-input" id="gos-cv-val-k" value="${g.params.k}" oninput="GraphObject.setCustomParam(null, 'k', this.value)">
+              </div>
+              <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:2px;">
+                ${[0, 1, 3, -1, -3].map(p => `
+                  <button type="button" class="gos-cv-chip" style="padding:2px 6px;font-size:10.5px;" onclick="GraphObject.setCustomParam(null, 'k', ${p})">${p > 0 ? '+' + p : p}</button>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 3: Independent View Limits (Domain & Range Bounds) -->
+        <div style="margin-bottom:14px;">
+          <div class="gos-cv-sec-title">
+            <span style="color:#38bdf8;">🌐 Axis View Bounds &amp; Extrema Analysis</span>
+            <div style="display:flex;gap:6px;">
+              <button type="button" class="gos-preset-chip" style="cursor:pointer;padding:3px 8px;font-size:11px;" onclick="GraphObject.autoScaleView(GraphObject.getModalTargetGraph())">✨ Auto Scale</button>
+              <button type="button" class="gos-preset-chip" style="cursor:pointer;padding:3px 8px;font-size:11px;" onclick="GraphObject.resetView(GraphObject.getModalTargetGraph())">⤢ Reset (-10 to 10)</button>
+            </div>
+          </div>
+          <div class="gos-cv-bounds-grid">
+            <div class="gos-cv-bound-box">
+              <span class="gos-cv-bound-label">X Min (Left)</span>
+              <input type="number" step="1" id="gos-cv-xmin" class="gos-cv-bound-input" value="${Math.round(g.xMin * 10) / 10}" oninput="GraphObject.updateCustomBounds('xMin', this.value)">
+            </div>
+            <div class="gos-cv-bound-box">
+              <span class="gos-cv-bound-label">X Max (Right)</span>
+              <input type="number" step="1" id="gos-cv-xmax" class="gos-cv-bound-input" value="${Math.round(g.xMax * 10) / 10}" oninput="GraphObject.updateCustomBounds('xMax', this.value)">
+            </div>
+            <div class="gos-cv-bound-box">
+              <span class="gos-cv-bound-label">Y Min (Bottom)</span>
+              <input type="number" step="1" id="gos-cv-ymin" class="gos-cv-bound-input" value="${Math.round(g.yMin * 10) / 10}" oninput="GraphObject.updateCustomBounds('yMin', this.value)">
+            </div>
+            <div class="gos-cv-bound-box">
+              <span class="gos-cv-bound-label">Y Max (Top)</span>
+              <input type="number" step="1" id="gos-cv-ymax" class="gos-cv-bound-input" value="${Math.round(g.yMax * 10) / 10}" oninput="GraphObject.updateCustomBounds('yMax', this.value)">
+            </div>
+          </div>
+
+          <!-- Extrema Analysis Checkbox -->
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.25);border-radius:8px;">
+            <input type="checkbox" id="gos-cv-extrema-toggle" ${g.showExtrema ? 'checked' : ''} onchange="GraphObject.toggleActiveExtrema(); this.checked = !!GraphObject.getModalTargetGraph().showExtrema;" style="width:18px;height:18px;accent-color:#fbbf24;cursor:pointer;">
+            <label for="gos-cv-extrema-toggle" style="font-size:12px;font-weight:700;color:#fde68a;cursor:pointer;">
+              📊 Show Min/Max Extrema Markers (Highlights Local &amp; Absolute Minima/Maxima)
+            </label>
+          </div>
+        </div>
+
+        <!-- Section 4: Quick Presets (1-Click Load) -->
+        <div style="margin-bottom:14px;">
+          <div class="gos-cv-sec-title">
+            <span>📚 Quick Formula Presets</span>
+          </div>
+          <div class="gos-cv-chips-wrap" style="margin-bottom:0;">
+            ${[
+              { label: 'Quadratic: x² - 4', expr: 'x^2 - 4' },
+              { label: 'Cubic: x³ - 3x', expr: 'x^3 - 3*x' },
+              { label: 'Parametric Wave: a*sin(b*x) + c', expr: 'a*sin(b*x) + c' },
+              { label: 'General Parabola: a*x² + b*x + c', expr: 'a*x^2 + b*x + c' },
+              { label: 'Gaussian: exp(-x²)', expr: 'exp(-x^2)' },
+              { label: 'Damped: exp(-0.2*x)*sin(3*x)', expr: 'exp(-0.2*x)*sin(3*x)' },
+              { label: 'Rational: 1/(x² + 1)', expr: '1/(x^2 + 1)' },
+              { label: 'Logarithm: ln(x)', expr: 'ln(x)' },
+              { label: 'Modulus: abs(x)', expr: 'abs(x)' },
+              { label: 'Semi-circle: sqrt(16 - x²)', expr: 'sqrt(16 - x^2)' }
+            ].map(p => `
+              <button type="button" class="gos-preset-chip" style="font-size:11px;padding:4px 8px;cursor:pointer;" onclick="GraphObject.loadCustomPreset('${p.expr}')">${p.label}</button>
+            `).join('')}
+          </div>
+        </div>
+
+        <!-- Section 5: Curve Color & Footer -->
+        <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid rgba(255,255,255,0.1);padding-top:14px;flex-wrap:wrap;gap:10px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span style="font-size:11.5px;color:#94a3b8;font-weight:700;">Color:</span>
+            <div style="display:flex;gap:6px;">
+              ${LINE_COLORS.slice(0, 7).map(c => `
+                <button type="button" class="gos-theme-swatch ${c.color.toLowerCase() === selectedColor.toLowerCase() ? 'active' : ''}"
+                  style="width:24px;height:24px;border-radius:50%;background:${c.color};border:2px solid ${c.color.toLowerCase() === selectedColor.toLowerCase() ? '#ffffff' : 'transparent'};cursor:pointer;"
+                  title="${c.name}"
+                  onclick="GraphObject.setEqColorFromModal('${c.color}')">
+                </button>
+              `).join('')}
+            </div>
+          </div>
           <div style="display:flex;gap:10px;">
-            <button type="button" class="gos-btn gos-btn-secondary" onclick="document.getElementById('gos-quick-edit-modal')?.remove()" style="padding:10px 18px;font-size:13.5px;cursor:pointer;border-radius:10px;">Cancel</button>
-            <button type="button" class="gos-btn gos-btn-primary" id="gos-qe-save-btn" style="background:#38bdf8;color:#0b1329;font-weight:700;padding:10px 20px;font-size:14px;cursor:pointer;border-radius:10px;border:none;">
-              ✓ Save Curve
+            <button type="button" class="gos-btn gos-btn-secondary" onclick="GraphObject.closeCustomViewModal()" style="padding:9px 18px;font-size:13px;cursor:pointer;border-radius:8px;">Close</button>
+            <button type="button" class="gos-btn gos-btn-primary" onclick="GraphObject.applyCustomEquationFromModal(); GraphObject.closeCustomViewModal();" style="background:#38bdf8;color:#0b1329;font-weight:800;padding:9px 20px;font-size:13px;cursor:pointer;border-radius:8px;border:none;">
+              ✓ Apply to Board
             </button>
           </div>
         </div>
@@ -2673,54 +3053,128 @@ const GraphObject = (() => {
 
     document.body.appendChild(modal);
 
-    const input = modal.querySelector('#gos-qe-input');
+    const input = modal.querySelector('#gos-cv-input');
     if (input) {
       input.focus();
-      input.select();
       input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') modal.querySelector('#gos-qe-save-btn').click();
-        if (e.key === 'Escape') modal.remove();
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          GraphObject.applyCustomEquationFromModal();
+        }
+        if (e.key === 'Escape') {
+          GraphObject.closeCustomViewModal();
+        }
       });
     }
 
-    modal.querySelector('#gos-qe-save-btn').addEventListener('click', () => {
-      const val = input ? input.value.trim() : '';
-      if (!val) return;
-      eq.expr = val;
-      eq.color = selectedColor;
-
-      // Save domain restrictions
-      const dminVal = modal.querySelector('#gos-qe-dmin')?.value.trim();
-      const dmaxVal = modal.querySelector('#gos-qe-dmax')?.value.trim();
-      eq.domainMin = (dminVal !== '' && !isNaN(parseFloat(dminVal))) ? parseFloat(dminVal) : null;
-      eq.domainMax = (dmaxVal !== '' && !isNaN(parseFloat(dmaxVal))) ? parseFloat(dmaxVal) : null;
-      eq.domainMinInc = (modal.querySelector('#gos-qe-dmin-inc')?.textContent === '[');
-      eq.domainMaxInc = (modal.querySelector('#gos-qe-dmax-inc')?.textContent === ']');
-
-      // Save range restrictions
-      const rminVal = modal.querySelector('#gos-qe-rmin')?.value.trim();
-      const rmaxVal = modal.querySelector('#gos-qe-rmax')?.value.trim();
-      eq.rangeMin = (rminVal !== '' && !isNaN(parseFloat(rminVal))) ? parseFloat(rminVal) : null;
-      eq.rangeMax = (rmaxVal !== '' && !isNaN(parseFloat(rmaxVal))) ? parseFloat(rmaxVal) : null;
-      eq.rangeMinInc = (modal.querySelector('#gos-qe-rmin-inc')?.textContent === '[');
-      eq.rangeMaxInc = (modal.querySelector('#gos-qe-rmax-inc')?.textContent === ']');
-
-      if (typeof Canvas !== 'undefined' && Canvas.renderShapes) Canvas.renderShapes();
-      if (typeof Canvas !== 'undefined' && Canvas.saveHistory) Canvas.saveHistory();
-      if (typeof App !== 'undefined' && App.showToast) App.showToast(`✓ Updated ${eq.label}`);
-      modal.remove();
+    modal.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') GraphObject.closeCustomViewModal();
     });
+  }
 
-    const deleteBtn = modal.querySelector('#gos-qe-delete-btn');
-    if (deleteBtn) {
-      deleteBtn.addEventListener('click', () => {
-        g.equations.splice(eqIndex, 1);
-        if (typeof Canvas !== 'undefined' && Canvas.renderShapes) Canvas.renderShapes();
-        if (typeof Canvas !== 'undefined' && Canvas.saveHistory) Canvas.saveHistory();
-        if (typeof App !== 'undefined' && App.showToast) App.showToast(`Removed curve`);
-        modal.remove();
-      });
+  function applyCustomEquationFromModal() {
+    const modal = document.getElementById('gos-custom-view-modal');
+    if (!modal) return;
+    const g = modalTargetGraph || editingGraph;
+    if (!g) return;
+
+    const input = modal.querySelector('#gos-cv-input');
+    const exprVal = input ? input.value.trim() : '';
+    if (!exprVal) return;
+
+    if (!g.equations || !g.equations.length) {
+      g.equations = [{ id: 1, label: 'f₁(x)', expr: exprVal, color: g.color || '#38bdf8', lineWidth: 2.8, visible: true }];
+    } else {
+      const eq = g.equations[activeCustomViewEqIdx] || g.equations[0];
+      eq.expr = exprVal;
     }
+    g.isCustomEquation = true;
+    g.activeParentExpr = exprVal;
+
+    if (typeof Canvas !== 'undefined' && Canvas.renderShapes) Canvas.renderShapes();
+    if (typeof Canvas !== 'undefined' && Canvas.saveHistory) Canvas.saveHistory();
+    if (typeof App !== 'undefined' && App.showToast) {
+      App.showToast(`✓ Plotted y = ${exprVal}`);
+    }
+  }
+
+  function setCustomParam(g, key, rawVal) {
+    const target = g || modalTargetGraph || editingGraph;
+    if (!target) return;
+    if (!target.params) target.params = {};
+    const val = Math.round(Number(rawVal) * 1000) / 1000;
+    target.params[key] = val;
+
+    const modal = document.getElementById('gos-custom-view-modal');
+    if (modal) {
+      const valInput = modal.querySelector(`#gos-cv-val-${key}`);
+      if (valInput && document.activeElement !== valInput) valInput.value = val;
+
+      const rangeInput = modal.querySelector(`#gos-cv-range-${key}`);
+      if (rangeInput && document.activeElement !== rangeInput) rangeInput.value = val;
+
+      const disp = modal.querySelector(`#gos-cv-disp-${key}`);
+      if (disp) disp.textContent = val > 0 ? `+${val}` : String(val);
+    }
+
+    if (typeof Canvas !== 'undefined' && Canvas.renderShapes) Canvas.renderShapes();
+  }
+
+  function updateCustomBounds(boundKey, rawVal) {
+    const target = modalTargetGraph || editingGraph;
+    if (!target) return;
+    const val = parseFloat(rawVal);
+    if (!isNaN(val)) {
+      target[boundKey] = val;
+      if (typeof Canvas !== 'undefined' && Canvas.renderShapes) Canvas.renderShapes();
+    }
+  }
+
+  function insertCustomSymbol(sym) {
+    const input = document.getElementById('gos-cv-input');
+    if (!input) return;
+    const start = input.selectionStart || input.value.length;
+    const end = input.selectionEnd || input.value.length;
+    const cur = input.value;
+    input.value = cur.substring(0, start) + sym + cur.substring(end);
+    input.focus();
+    input.selectionStart = input.selectionEnd = start + sym.length;
+  }
+
+  function loadCustomPreset(presetExpr) {
+    const input = document.getElementById('gos-cv-input');
+    if (input) input.value = presetExpr;
+    applyCustomEquationFromModal();
+  }
+
+  function setEqColorFromModal(color) {
+    const g = modalTargetGraph || editingGraph;
+    if (!g) return;
+    const eq = (g.equations && g.equations[activeCustomViewEqIdx]) || (g.equations && g.equations[0]);
+    if (eq) eq.color = color;
+    g.color = color;
+
+    const modal = document.getElementById('gos-custom-view-modal');
+    if (modal) {
+      modal.querySelectorAll('.gos-theme-swatch').forEach(sw => {
+        sw.style.borderColor = (sw.title.toLowerCase() === color.toLowerCase() || sw.style.backgroundColor === color) ? '#ffffff' : 'transparent';
+      });
+      const pfx = modal.querySelector('#gos-cv-prefix');
+      if (pfx) pfx.style.color = color;
+    }
+
+    if (typeof Canvas !== 'undefined' && Canvas.renderShapes) Canvas.renderShapes();
+    if (typeof Canvas !== 'undefined' && Canvas.saveHistory) Canvas.saveHistory();
+  }
+
+  function closeCustomViewModal() {
+    const modal = document.getElementById('gos-custom-view-modal');
+    if (modal) modal.remove();
+    if (typeof Canvas !== 'undefined' && Canvas.saveHistory) Canvas.saveHistory();
+  }
+
+  function openQuickEditEquation(g, eqIndex) {
+    openCustomViewModal(g, eqIndex);
   }
 
   let activeDomainRangeEqIdx = 0;
@@ -2843,6 +3297,13 @@ const GraphObject = (() => {
     `;
 
     document.body.appendChild(modal);
+
+    modal.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeDomainRangeModal();
+      if (e.key === 'Enter') applyDomainRange();
+    });
+    const firstInput = modal.querySelector('input');
+    if (firstInput) firstInput.focus();
   }
 
   function onDomainRangeTargetChange(newIdx) {
@@ -3016,6 +3477,9 @@ const GraphObject = (() => {
     `;
 
     document.body.appendChild(modal);
+    modal.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeColorThemeModal();
+    });
   }
 
   function closeColorThemeModal() {
@@ -3873,6 +4337,34 @@ const GraphObject = (() => {
     }
   }
 
+  // ── Toggle extrema markers on the currently active/selected graph ──
+  function toggleActiveExtrema() {
+    // Find active graph: prefer selected, then last edited, then first graph shape
+    let target = null;
+    if (editingGraph) {
+      target = editingGraph;
+    } else if (typeof Canvas !== 'undefined' && Canvas.getShapesRef) {
+      const shapes = Canvas.getShapesRef();
+      if (shapes && shapes.length) {
+        target = shapes.find(s => s.type === 'graph' && s.selected)
+               || shapes.slice().reverse().find(s => s.type === 'graph');
+      }
+    }
+
+    if (!target) {
+      if (typeof App !== 'undefined' && App.showToast)
+        App.showToast('Select a graph first to toggle Min/Max markers');
+      return;
+    }
+
+    target.showExtrema = !target.showExtrema;
+
+    if (typeof Canvas !== 'undefined' && Canvas.renderShapes) Canvas.renderShapes();
+    if (typeof Canvas !== 'undefined' && Canvas.saveHistory) Canvas.saveHistory();
+    if (typeof App !== 'undefined' && App.showToast)
+      App.showToast(target.showExtrema ? '📊 Min/Max markers ON' : '📊 Min/Max markers OFF');
+  }
+
   return {
     compile,
     normalize,
@@ -3915,6 +4407,14 @@ const GraphObject = (() => {
     openQuickAddEquation,
     closeQuickCompareModal,
     openQuickEditEquation,
+    openCustomViewModal,
+    applyCustomEquationFromModal,
+    setCustomParam,
+    updateCustomBounds,
+    insertCustomSymbol,
+    loadCustomPreset,
+    setEqColorFromModal,
+    closeCustomViewModal,
     openDomainRangeModal,
     closeDomainRangeModal,
     onDomainRangeTargetChange,
@@ -3927,7 +4427,8 @@ const GraphObject = (() => {
     LINE_COLORS,
     FUNCTION_FAMILIES,
     getEditingGraph: () => editingGraph,
-    getModalTargetGraph: () => modalTargetGraph || editingGraph
+    getModalTargetGraph: () => modalTargetGraph || editingGraph,
+    toggleActiveExtrema
   };
 
 })();

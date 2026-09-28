@@ -1250,6 +1250,7 @@ const WorkspaceSplit = (() => {
   }
 
   function syncPartitionModeUI(p) {
+    if (!containerEl || !p) return;
     const id = p.id;
     // Header mode pill
     const pillWrap = containerEl.querySelector(`#wp-mode-pill-${id}`);

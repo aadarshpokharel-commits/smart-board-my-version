@@ -54,6 +54,11 @@
       <span class="rec-dot"></span> <span>Record</span>
     </button>
 
+    <button class="tb-btn math-sim-btn" id="btn-math-sim" onclick="MathSimulations.show()" title="U25RMA101 Mathematics Simulation Plan (Units I – V)">
+      <svg viewBox="0 0 20 20" fill="none" style="width:15px;height:15px;"><path d="M3 16L7 6l4 8 3-10 3 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="7" cy="6" r="1.5" fill="#38bdf8"/><circle cx="11" cy="14" r="1.5" fill="#facc15"/><circle cx="14" cy="4" r="1.5" fill="#ef4444"/></svg>
+      <span>Math Lab (U25RMA101)</span>
+    </button>
+
     <!-- WORKSPACE PARTITION / SCREEN SPLIT CONTROL -->
     <div class="tb-dropdown" id="dd-split">
       <button class="tb-btn split-btn" id="btn-workspace-split" onclick="UI.toggleDropdown('dd-split')" title="Workspace Partition / Screen Split">
@@ -173,6 +178,13 @@
           <svg viewBox="0 0 20 20" fill="none"><path d="M3 17h14M3 3v14M5 13c3-8 6-8 9-2s4-8 4-8" stroke="#38bdf8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="8" cy="9" r="1.5" fill="#38bdf8"/><circle cx="14" cy="11" r="1.5" fill="#facc15"/></svg>
           2D Graphable Workspace
         </div>
+      </button>
+      <button class="dd-item" onclick="MathSimulations.show(); UI.closeAllDropdowns()">
+        <div class="dd-item-left">
+          <svg viewBox="0 0 20 20" fill="none"><path d="M3 16L7 6l4 8 3-10 3 6" stroke="#38bdf8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="7" cy="6" r="1.5" fill="#38bdf8"/><circle cx="11" cy="14" r="1.5" fill="#facc15"/></svg>
+          U25RMA101 Math Simulations
+        </div>
+        <span class="dd-shortcut">Units I–V</span>
       </button>
       <div class="dd-sep"></div>
       <button class="dd-item" onclick="Library.toggle(); UI.closeAllDropdowns()">
@@ -986,6 +998,7 @@
 <script src="tools/ppt-presenter.js"></script>
 <script src="tools/physics-lab.js"></script>
 <script src="tools/math-visualizer.js"></script>
+<script src="tools/math-simulations.js"></script>
 <script src="tools/area-solver.js"></script>
 <script src="tools/workspace-split.js"></script>
 <script>
