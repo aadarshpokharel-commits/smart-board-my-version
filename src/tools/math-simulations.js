@@ -82,7 +82,7 @@ const MathSimulations = (() => {
         { id: 'u1_surf', name: 'Functions of Two Variables', short: 'Two Variables', icon: '🌐', is3D: true, desc: 'Interactive 3D surface z = f(x,y) with custom equation input, orbit rotation, and coordinate probes.' },
         { id: 'u1_partial', name: 'Partial Derivatives', short: 'Partial Derivs', icon: '✂️', is3D: true, desc: 'Fix x or y to generate cross-sections, tangent slopes ∂f/∂x and ∂f/∂y, and the tangent plane.' },
         { id: 'u1_total', name: 'Total Derivatives', short: 'Total Derivs', icon: '📈', is3D: true, desc: 'Change increments dx and dy; visualize resulting differential dz vs true surface increment Δz.' },
-        { id: 'u1_taylor', name: "Taylor's Formula", short: "Taylor's Series", icon: '✨', is3D: true, desc: 'Degree 1, 2, and 3 polynomial approximations approaching the multivariable function in neighborhood of (x₀,y₀).' },
+        { id: 'u1_taylor', name: "Taylor Series Graph & Expansion", short: "Taylor's Series", icon: '✨', is3D: false, desc: 'Interactive 2D Taylor polynomial approximation P_n(x) about center x=a with live degree control, step-by-step term expansion, and SmartBoard canvas export.' },
         { id: 'u1_extrema', name: 'Extreme Values & Saddle Points', short: 'Extreme Values', icon: '🏔️', is3D: true, desc: 'Find local maxima, local minima, and saddle points using the Hessian discriminant D = fxx·fyy - fxy².' }
       ]
     },
@@ -175,7 +175,14 @@ const MathSimulations = (() => {
     u1_sliceMode: 'both', // 'x' | 'y' | 'both'
     u1_dx: 0.5,
     u1_dy: 0.4,
-    u1_taylorOrder: 2,   // 0, 1, 2, 3
+    u1_taylorOrder: 3,   // 0 to 10
+    u1_taylorFunc: 'sin(x)', // preset id or custom formula
+    u1_taylorCustom: 'sin(x)', // custom expression text
+    u1_taylorA: 0.0,     // center point a
+    u1_taylorDegree: 3,  // maximum polynomial order (0 to 10)
+    u1_taylorShowError: true, // shaded error fill |f(x) - P_n(x)|
+    u1_taylorShowTangent: true, // show tangent line P_1
+    u1_taylorAutoPlaying: false, // auto-incrementing degree timer
 
     // Unit II (Integral Calculus)
     u2_func: 'custom',
@@ -237,6 +244,9 @@ const MathSimulations = (() => {
   let customVecP = null;
   let customVecQ = null;
   let customOdeFn = null;
+  let customFnTaylor = null;
+  let taylorSeriesData = { coeffs: [], terms: [], exprFormatted: '' };
+  let taylorAutoTimer = null;
 
   // ─────────────────────────────────────────────────────────────────────────
   // SAFE MATHEMATICAL EXPRESSION PARSER & COMPILER (2D & Multivariable)
@@ -285,12 +295,408 @@ const MathSimulations = (() => {
     }
   }
 
+  // 1D Mathematical Expression Compiler for Taylor Series & Function Analysis
+  function compileExpr1D(exprStr) {
+    if (!exprStr || !exprStr.trim()) return (x) => 0;
+    try {
+      let s = exprStr.trim();
+      s = s.replace(/\^/g, '**');
+      s = s.replace(/(\d)([a-zA-Z(])/g, '$1*$2');
+      s = s.replace(/(\))([a-zA-Z0-9(])/g, '$1*$2');
+      s = s.replace(/([xX])([a-zA-Z0-9(])/g, '$1*$2');
+      s = s.replace(/\bpi\b/gi, 'Math.PI');
+      s = s.replace(/\be\b/g, 'Math.E');
+
+      const funcs = ['sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'sinh', 'cosh', 'tanh', 'exp', 'log', 'ln', 'sqrt', 'cbrt', 'abs', 'floor', 'ceil', 'round'];
+      funcs.forEach(f => {
+        const re = new RegExp(`\\b${f}\\b`, 'g');
+        if (f === 'ln') {
+          s = s.replace(re, 'Math.log');
+        } else {
+          s = s.replace(re, `Math.${f}`);
+        }
+      });
+
+      const fn = new Function('x', `
+        try {
+          const val = ${s};
+          return (typeof val === 'number' && isFinite(val)) ? val : NaN;
+        } catch(e) {
+          return NaN;
+        }
+      `);
+      fn(1);
+      return fn;
+    } catch (e) {
+      return (x) => 0;
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // TAYLOR SERIES MATHEMATICAL ALGORITHMS & DERIVATIVES
+  // ─────────────────────────────────────────────────────────────────────────
+  function factorial(k) {
+    if (k <= 1) return 1;
+    let res = 1;
+    for (let i = 2; i <= k; i++) res *= i;
+    return res;
+  }
+
+  function solveLinearSystem(A, y) {
+    const N = y.length;
+    const M = Array.from({length: N}, (row, i) => [...A[i], y[i]]);
+    for (let i = 0; i < N; i++) {
+      let maxRow = i;
+      for (let k = i + 1; k < N; k++) {
+        if (Math.abs(M[k][i]) > Math.abs(M[maxRow][i])) maxRow = k;
+      }
+      const temp = M[i]; M[i] = M[maxRow]; M[maxRow] = temp;
+      const pivot = M[i][i];
+      if (Math.abs(pivot) < 1e-13) continue;
+      for (let j = i; j <= N; j++) M[i][j] /= pivot;
+      for (let k = 0; k < N; k++) {
+        if (k === i) continue;
+        const factor = M[k][i];
+        for (let j = i; j <= N; j++) M[k][j] -= factor * M[i][j];
+      }
+    }
+    return M.map(row => row[N]);
+  }
+
+  function computeTaylorSeries(fn, presetId, a, degree) {
+    const isZeroA = Math.abs(a) < 1e-4;
+    const coeffs = [];
+    const terms = [];
+
+    // Analytical shortcuts for curriculum standard presets
+    if (presetId === 'sin(x)') {
+      for (let k = 0; k <= degree; k++) {
+        const der = Math.sin(a + k * Math.PI / 2);
+        const fac = factorial(k);
+        const c = Math.abs(der) < 1e-12 ? 0 : der / fac;
+        coeffs.push(c);
+        let frac = '';
+        if (isZeroA) {
+          if (k % 2 === 1) {
+            const m = (k - 1) / 2;
+            const s = (m % 2 === 1) ? '-' : '+';
+            frac = (k === 1) ? (s === '-' ? '-1' : '+1') : `${s}1/${fac}`;
+          } else {
+            frac = '0';
+          }
+        }
+        terms.push({ k, der, fac, coeff: c, frac });
+      }
+      return { coeffs, terms };
+    }
+
+    if (presetId === 'cos(x)') {
+      for (let k = 0; k <= degree; k++) {
+        const der = Math.cos(a + k * Math.PI / 2);
+        const fac = factorial(k);
+        const c = Math.abs(der) < 1e-12 ? 0 : der / fac;
+        coeffs.push(c);
+        let frac = '';
+        if (isZeroA) {
+          if (k % 2 === 0) {
+            const m = k / 2;
+            const s = (m % 2 === 1) ? '-' : '+';
+            frac = (k === 0) ? '+1' : `${s}1/${fac}`;
+          } else {
+            frac = '0';
+          }
+        }
+        terms.push({ k, der, fac, coeff: c, frac });
+      }
+      return { coeffs, terms };
+    }
+
+    if (presetId === 'exp(x)') {
+      const base = Math.exp(a);
+      for (let k = 0; k <= degree; k++) {
+        const der = base;
+        const fac = factorial(k);
+        const c = der / fac;
+        coeffs.push(c);
+        const frac = isZeroA ? (k === 0 ? '+1' : `+1/${fac}`) : '';
+        terms.push({ k, der, fac, coeff: c, frac });
+      }
+      return { coeffs, terms };
+    }
+
+    if (presetId === 'ln(1+x)' && (a > -0.99)) {
+      for (let k = 0; k <= degree; k++) {
+        const fac = factorial(k);
+        let der = 0;
+        let c = 0;
+        if (k === 0) {
+          der = Math.log(1 + a);
+          c = der;
+        } else {
+          const sign = (k % 2 === 1) ? 1 : -1;
+          der = sign * factorial(k - 1) / Math.pow(1 + a, k);
+          c = sign / (k * Math.pow(1 + a, k));
+        }
+        coeffs.push(c);
+        let frac = '';
+        if (isZeroA) {
+          if (k === 0) frac = '0';
+          else {
+            const s = (k % 2 === 1) ? '+' : '-';
+            frac = (k === 1) ? (s === '+' ? '+1' : '-1') : `${s}1/${k}`;
+          }
+        }
+        terms.push({ k, der, fac, coeff: c, frac });
+      }
+      return { coeffs, terms };
+    }
+
+    if (presetId === '1/(1-x)' && (a < 0.99)) {
+      for (let k = 0; k <= degree; k++) {
+        const fac = factorial(k);
+        const c = 1 / Math.pow(1 - a, k + 1);
+        const der = c * fac;
+        coeffs.push(c);
+        const frac = isZeroA ? '+1' : '';
+        terms.push({ k, der, fac, coeff: c, frac });
+      }
+      return { coeffs, terms };
+    }
+
+    if (presetId === 'sinh(x)') {
+      for (let k = 0; k <= degree; k++) {
+        const der = (k % 2 === 0) ? Math.sinh(a) : Math.cosh(a);
+        const fac = factorial(k);
+        const c = der / fac;
+        coeffs.push(c);
+        const frac = isZeroA ? (k % 2 === 1 ? `+1/${fac}` : '0') : '';
+        terms.push({ k, der, fac, coeff: c, frac });
+      }
+      return { coeffs, terms };
+    }
+
+    if (presetId === 'cosh(x)') {
+      for (let k = 0; k <= degree; k++) {
+        const der = (k % 2 === 0) ? Math.cosh(a) : Math.sinh(a);
+        const fac = factorial(k);
+        const c = der / fac;
+        coeffs.push(c);
+        const frac = isZeroA ? (k % 2 === 0 ? (k === 0 ? '+1' : `+1/${fac}`) : '0') : '';
+        terms.push({ k, der, fac, coeff: c, frac });
+      }
+      return { coeffs, terms };
+    }
+
+    // Universal Chebyshev least-squares collocation fit for arbitrary functions
+    const R = 0.32;
+    const numPts = Math.max(degree * 2 + 1, 23);
+    const A = [];
+    const y = [];
+    for (let i = 0; i < numPts; i++) {
+      const theta = Math.PI * (2 * i + 1) / (2 * numPts);
+      const h = Math.cos(theta) * R;
+      const val = fn(a + h);
+      if (!isFinite(val)) continue;
+      y.push(val);
+      const row = [1];
+      let curH = 1;
+      for (let k = 1; k <= degree; k++) {
+        curH *= h;
+        row.push(curH);
+      }
+      A.push(row);
+    }
+    const N = degree + 1;
+    const ATA = Array.from({length: N}, () => Array(N).fill(0));
+    const ATy = Array(N).fill(0);
+    for (let r = 0; r < A.length; r++) {
+      for (let i = 0; i < N; i++) {
+        ATy[i] += A[r][i] * y[r];
+        for (let j = 0; j < N; j++) ATA[i][j] += A[r][i] * A[r][j];
+      }
+    }
+    const sol = solveLinearSystem(ATA, ATy);
+    for (let k = 0; k <= degree; k++) {
+      const c = (sol && isFinite(sol[k]) && Math.abs(sol[k]) > 1e-10) ? sol[k] : 0;
+      const fac = factorial(k);
+      const der = c * fac;
+      coeffs.push(c);
+      terms.push({ k, der, fac, coeff: c, frac: '' });
+    }
+    return { coeffs, terms };
+  }
+
+  function formatTaylorPolynomialStr(terms, a, degree) {
+    if (!terms || !terms.length) return '0';
+    const isZeroA = Math.abs(a) < 1e-4;
+    const aStr = isZeroA ? 'x' : (a > 0 ? `(x - ${+a.toFixed(2)})` : `(x + ${+(-a).toFixed(2)})`);
+    const parts = [];
+
+    for (let i = 0; i < terms.length; i++) {
+      const t = terms[i];
+      const c = t.coeff;
+      if (Math.abs(c) < 1e-5) continue;
+
+      const sign = c < 0 ? '-' : (parts.length > 0 ? '+' : '');
+      const absC = Math.abs(c);
+      let termBody = '';
+
+      if (t.k === 0) {
+        termBody = absC.toFixed(3);
+      } else if (t.k === 1) {
+        if (Math.abs(absC - 1) < 1e-4) termBody = aStr;
+        else termBody = `${absC.toFixed(3)}${aStr}`;
+      } else {
+        if (Math.abs(absC - 1) < 1e-4) termBody = `${aStr}^${t.k}`;
+        else termBody = `${absC.toFixed(3)}${aStr}^${t.k}`;
+      }
+
+      if (parts.length === 0) {
+        parts.push(c < 0 ? `-${termBody}` : termBody);
+      } else {
+        parts.push(`${sign} ${termBody}`);
+      }
+    }
+
+    if (parts.length === 0) return '0';
+    return parts.join(' ');
+  }
+
+  function evalTaylorPolynomial(x, a, coeffs) {
+    if (!coeffs || !coeffs.length) return 0;
+    const dx = x - a;
+    let sum = 0;
+    let p = 1;
+    for (let k = 0; k < coeffs.length; k++) {
+      sum += coeffs[k] * p;
+      p *= dx;
+    }
+    return isFinite(sum) ? sum : 0;
+  }
+
+  function recomputeTaylor() {
+    const fn = (x) => {
+      if (customFnTaylor) {
+        const v = customFnTaylor(x);
+        return isFinite(v) ? v : NaN;
+      }
+      return Math.sin(x);
+    };
+
+    const res = computeTaylorSeries(fn, params.u1_taylorFunc, params.u1_taylorA, params.u1_taylorDegree);
+    taylorSeriesData.coeffs = res.coeffs;
+    taylorSeriesData.terms = res.terms;
+    taylorSeriesData.exprFormatted = formatTaylorPolynomialStr(res.terms, params.u1_taylorA, params.u1_taylorDegree);
+  }
+
+  function applyTaylorFunction(exprStr) {
+    if (!exprStr || !exprStr.trim()) return;
+    const clean = exprStr.trim();
+    params.u1_taylorCustom = clean;
+    params.u1_taylorFunc = clean;
+    customFnTaylor = compileExpr1D(clean);
+    recomputeTaylor();
+    buildSidebarControls();
+    if (typeof App !== 'undefined' && App.showToast) {
+      App.showToast(`✨ Taylor Series: f(x) = ${clean}`);
+    }
+  }
+
+  function setTaylorPreset(presetId, defaultA = 0) {
+    params.u1_taylorFunc = presetId;
+    params.u1_taylorCustom = presetId;
+    const inp = document.getElementById('ms-taylor-expr');
+    if (inp) inp.value = presetId;
+    customFnTaylor = compileExpr1D(presetId);
+    if (defaultA !== null && defaultA !== undefined) {
+      params.u1_taylorA = defaultA;
+    }
+    recomputeTaylor();
+    buildSidebarControls();
+    if (typeof App !== 'undefined' && App.showToast) {
+      App.showToast(`✨ Taylor Series preset: f(x) = ${presetId}`);
+    }
+  }
+
+  function setTaylorA(newA) {
+    params.u1_taylorA = Math.max(-4.5, Math.min(4.5, newA));
+    recomputeTaylor();
+    const lbl = document.getElementById('val-taylor-a');
+    if (lbl) lbl.textContent = `a = ${params.u1_taylorA.toFixed(2)}`;
+    const slider = document.getElementById('slider-taylor-a');
+    if (slider) slider.value = params.u1_taylorA;
+    const listEl = document.getElementById('ms-taylor-terms-list');
+    if (listEl) listEl.innerHTML = renderTaylorTermsList();
+    const polyEl = document.getElementById('ms-taylor-poly-str');
+    if (polyEl) polyEl.textContent = taylorSeriesData.exprFormatted || '0';
+  }
+
+  function setTaylorDegree(deg) {
+    params.u1_taylorDegree = Math.max(0, Math.min(10, Math.round(deg)));
+    params.u1_taylorOrder = params.u1_taylorDegree;
+    recomputeTaylor();
+    buildSidebarControls();
+  }
+
+  function stepTaylorDegree(delta) {
+    setTaylorDegree(params.u1_taylorDegree + delta);
+  }
+
+  function toggleTaylorAutoStep() {
+    if (taylorAutoTimer) {
+      clearInterval(taylorAutoTimer);
+      taylorAutoTimer = null;
+      params.u1_taylorAutoPlaying = false;
+    } else {
+      params.u1_taylorAutoPlaying = true;
+      if (params.u1_taylorDegree >= 10) params.u1_taylorDegree = 0;
+      taylorAutoTimer = setInterval(() => {
+        if (params.u1_taylorDegree < 10) {
+          setTaylorDegree(params.u1_taylorDegree + 1);
+        } else {
+          clearInterval(taylorAutoTimer);
+          taylorAutoTimer = null;
+          params.u1_taylorAutoPlaying = false;
+          buildSidebarControls();
+        }
+      }, 1200);
+    }
+    buildSidebarControls();
+  }
+
+  function renderTaylorTermsList() {
+    if (!taylorSeriesData || !taylorSeriesData.terms) return '';
+    return taylorSeriesData.terms.map(t => {
+      const isLatest = t.k === params.u1_taylorDegree;
+      const derStr = isFinite(t.der) ? t.der.toFixed(3) : '0';
+      const coeffStr = isFinite(t.coeff) ? t.coeff.toFixed(4) : '0';
+      const aVal = params.u1_taylorA;
+      const aStr = Math.abs(aVal) < 1e-4 ? 'x' : (aVal > 0 ? `(x - ${+aVal.toFixed(2)})` : `(x + ${+(-aVal).toFixed(2)})`);
+      const termExpr = t.k === 0 ? coeffStr : (t.k === 1 ? `${coeffStr} ${aStr}` : `${coeffStr} ${aStr}<sup>${t.k}</sup>`);
+
+      return `
+        <div style="display:flex; justify-content:space-between; align-items:center; background:${isLatest ? 'rgba(250, 204, 21, 0.15)' : 'rgba(255, 255, 255, 0.04)'}; border:1px solid ${isLatest ? '#facc15' : 'rgba(255, 255, 255, 0.08)'}; border-radius:4px; padding:3px 6px; font-size:10px;">
+          <div>
+            <span style="font-weight:700; color:${isLatest ? '#facc15' : '#38bdf8'};">k = ${t.k}:</span>
+            <span style="color:#94a3b8; font-size:9px; margin-left:3px;">f⁽${t.k}⁾(${aVal.toFixed(1)}) / ${t.fac}</span>
+            ${t.frac ? `<span style="color:#a78bfa; font-weight:600; margin-left:4px;">[${t.frac}]</span>` : ''}
+          </div>
+          <div style="font-family:monospace; color:${isLatest ? '#facc15' : '#f8fafc'}; font-size:10px;">
+            ${termExpr}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
   // Precompile initial custom expressions
   customFnU1 = compileExpr2D(params.u1_customExpr);
   customFnU2 = compileExpr2D(params.u2_customExpr);
   customVecP = compileExpr2D(params.u3_customP);
   customVecQ = compileExpr2D(params.u3_customQ);
   customOdeFn = compileExpr2D(params.u4_customExpr);
+  customFnTaylor = compileExpr1D(params.u1_taylorCustom || 'sin(x)');
+  recomputeTaylor();
 
   // ─────────────────────────────────────────────────────────────────────────
   // MATHEMATICAL EVALUATION
@@ -506,6 +912,12 @@ const MathSimulations = (() => {
 
   function setModule(modId) {
     activeModuleId = modId;
+    if (modId === 'u1_taylor') {
+      if (!customFnTaylor) {
+        customFnTaylor = compileExpr1D(params.u1_taylorCustom || 'sin(x)');
+      }
+      recomputeTaylor();
+    }
     updateNavigationUI();
     buildSidebarControls();
     initODEPoints();
@@ -515,7 +927,12 @@ const MathSimulations = (() => {
   // CUSTOM EQUATION APPLIERS & PRESETS
   // ─────────────────────────────────────────────────────────────────────────
   function applyCustomEquation(target = 'u1') {
-    if (target === 'u1') {
+    if (target === 'taylor') {
+      const input = document.getElementById('ms-taylor-expr');
+      if (input && input.value.trim()) {
+        applyTaylorFunction(input.value.trim());
+      }
+    } else if (target === 'u1') {
       const input = document.getElementById('ms-custom-expr-u1');
       if (input && input.value.trim()) {
         params.u1_customExpr = input.value.trim();
@@ -999,7 +1416,7 @@ const MathSimulations = (() => {
         <div class="ms-brand" onclick="MathSimulations.resetView()">
           <span class="ms-brand-icon">📐</span>
           <div>
-            <div class="ms-brand-title">U25RMA101 · Mathematics Simulation Suite</div>
+            <div class="ms-brand-title">U21MA101 / U25RMA101 · Mathematics Simulation Suite</div>
             <div class="ms-brand-sub">Units I – V Laboratory · Smart Board</div>
           </div>
         </div>
@@ -1131,100 +1548,199 @@ const MathSimulations = (() => {
       </div>
     `;
 
-    // ── UNIT I: Differential Calculus (Custom Equation Enabled) ──
+    // ── UNIT I: Differential Calculus ──
     if (activeUnit === 'unit1') {
-      html += `
-        <!-- CUSTOM EQUATION INPUT CARD -->
-        <div class="ms-card" style="border: 1.5px solid rgba(56, 189, 248, 0.45); background: rgba(14, 26, 50, 0.85);">
-          <div class="ms-card-title" style="color: #38bdf8;">
-            <span>⌨️ Custom Equation System</span>
-            <span style="font-size:8.5px; background:rgba(56,189,248,0.2); color:#38bdf8; padding:2px 5px; border-radius:3px;">Type & Enter</span>
-          </div>
-          <div style="font-size:10px; color:#cbd5e1;">Type any z = f(x, y) formula and press <b>Enter</b>:</div>
-          <div style="display:flex; gap:5px; margin-top:2px;">
-            <input type="text" id="ms-custom-expr-u1" class="ms-custom-input" value="${params.u1_customExpr}" placeholder="e.g. sin(x)*cos(y), x^2 - y^2" onkeydown="if(event.key==='Enter') MathSimulations.applyCustomEquation('u1')">
-            <button class="ms-mini-btn" style="background:#0284c7; color:#fff; font-weight:700; padding:0 8px;" onclick="MathSimulations.applyCustomEquation('u1')">Plot</button>
-          </div>
-          <div style="font-size:10px; color:#94a3b8; margin-top:2px;">Quick Formula Presets:</div>
-          <div class="ms-btn-row">
-            <button class="ms-mini-btn" onclick="MathSimulations.setCustomPreset('u1', '0.35*(x^2 + y^2)')">Paraboloid</button>
-            <button class="ms-mini-btn" onclick="MathSimulations.setCustomPreset('u1', '0.38*(x^2 - y^2)')">Saddle</button>
-            <button class="ms-mini-btn" onclick="MathSimulations.setCustomPreset('u1', 'sin(x)*cos(y)')">sin(x)cos(y)</button>
-            <button class="ms-mini-btn" onclick="MathSimulations.setCustomPreset('u1', 'sin(2.5*r)/(r+0.6)')">Ripples</button>
-            <button class="ms-mini-btn" onclick="MathSimulations.setCustomPreset('u1', '2.2*exp(-0.7*r^2)')">Gaussian</button>
-            <button class="ms-mini-btn" onclick="MathSimulations.setCustomPreset('u1', '0.15*(x^3 - 3*x*y^2)')">Monkey</button>
-          </div>
-          <div class="ms-slider-group" style="margin-top:4px;">
-            <div class="ms-slider-head"><span>Parameter a (Coeff):</span><span class="val" id="val-u1-a">${params.u1_customA.toFixed(2)}</span></div>
-            <input type="range" class="ms-slider" min="-3.0" max="4.0" step="0.05" value="${params.u1_customA}" oninput="MathSimulations.setParam('u1_customA', +this.value); document.getElementById('val-u1-a').textContent=(+this.value).toFixed(2);">
-          </div>
-          <div class="ms-slider-group">
-            <div class="ms-slider-head"><span>Parameter b (Scale):</span><span class="val" id="val-u1-b">${params.u1_customB.toFixed(2)}</span></div>
-            <input type="range" class="ms-slider" min="-3.0" max="4.0" step="0.05" value="${params.u1_customB}" oninput="MathSimulations.setParam('u1_customB', +this.value); document.getElementById('val-u1-b').textContent=(+this.value).toFixed(2);">
-          </div>
-          <div class="ms-slider-group">
-            <div class="ms-slider-head"><span>Parameter c (Offset):</span><span class="val" id="val-u1-c">${params.u1_customC.toFixed(2)}</span></div>
-            <input type="range" class="ms-slider" min="-3.0" max="3.0" step="0.05" value="${params.u1_customC}" oninput="MathSimulations.setParam('u1_customC', +this.value); document.getElementById('val-u1-c').textContent=(+this.value).toFixed(2);">
-          </div>
-          <div class="ms-slider-group">
-            <div class="ms-slider-head"><span>Domain Range ±R:</span><span class="val" id="val-u1-rng">${params.u1_range.toFixed(1)}</span></div>
-            <input type="range" class="ms-slider" min="1.0" max="3.8" step="0.2" value="${params.u1_range}" oninput="MathSimulations.setParam('u1_range', +this.value); document.getElementById('val-u1-rng').textContent=this.value;">
-          </div>
-        </div>
-      `;
-
-      if (activeModuleId === 'u1_surf' || activeModuleId === 'u1_partial') {
+      if (activeModuleId === 'u1_taylor') {
         html += `
+          <!-- TAYLOR FUNCTION SELECTOR & CUSTOM INPUT -->
+          <div class="ms-card" style="border: 1.5px solid rgba(250, 204, 21, 0.45); background: rgba(30, 27, 10, 0.85);">
+            <div class="ms-card-title" style="color: #facc15;">
+              <span>✨ Taylor Expansion Function f(x)</span>
+              <span style="font-size:8.5px; background:rgba(250,204,21,0.2); color:#facc15; padding:2px 5px; border-radius:3px;">Live Equation</span>
+            </div>
+            <div style="font-size:10px; color:#cbd5e1;">Type any function f(x) and press <b>Enter</b>:</div>
+            <div style="display:flex; gap:5px; margin-top:3px;">
+              <input type="text" id="ms-taylor-expr" class="ms-custom-input" value="${params.u1_taylorCustom}" placeholder="e.g. sin(x), exp(x), ln(1+x)" onkeydown="if(event.key==='Enter') MathSimulations.applyTaylorFunction(this.value)">
+              <button class="ms-mini-btn" style="background:#eab308; color:#0f172a; font-weight:700; padding:0 8px;" onclick="MathSimulations.applyTaylorFunction(document.getElementById('ms-taylor-expr').value)">Expand</button>
+            </div>
+            <div style="font-size:10px; color:#94a3b8; margin-top:5px;">Standard Calculus Presets:</div>
+            <div class="ms-btn-row" style="grid-template-columns: repeat(3, 1fr); margin-top:2px;">
+              <button class="ms-mini-btn ${params.u1_taylorFunc === 'sin(x)' ? 'active' : ''}" onclick="MathSimulations.setTaylorPreset('sin(x)', 0)">sin(x)</button>
+              <button class="ms-mini-btn ${params.u1_taylorFunc === 'cos(x)' ? 'active' : ''}" onclick="MathSimulations.setTaylorPreset('cos(x)', 0)">cos(x)</button>
+              <button class="ms-mini-btn ${params.u1_taylorFunc === 'exp(x)' ? 'active' : ''}" onclick="MathSimulations.setTaylorPreset('exp(x)', 0)">eˣ</button>
+              <button class="ms-mini-btn ${params.u1_taylorFunc === 'ln(1+x)' ? 'active' : ''}" onclick="MathSimulations.setTaylorPreset('ln(1+x)', 0)">ln(1+x)</button>
+              <button class="ms-mini-btn ${params.u1_taylorFunc === '1/(1-x)' ? 'active' : ''}" onclick="MathSimulations.setTaylorPreset('1/(1-x)', 0)">1/(1-x)</button>
+              <button class="ms-mini-btn ${params.u1_taylorFunc === '1/(1+x^2)' ? 'active' : ''}" onclick="MathSimulations.setTaylorPreset('1/(1+x^2)', 0)">1/(1+x²)</button>
+              <button class="ms-mini-btn ${params.u1_taylorFunc === 'sinh(x)' ? 'active' : ''}" onclick="MathSimulations.setTaylorPreset('sinh(x)', 0)">sinh(x)</button>
+              <button class="ms-mini-btn ${params.u1_taylorFunc === 'cosh(x)' ? 'active' : ''}" onclick="MathSimulations.setTaylorPreset('cosh(x)', 0)">cosh(x)</button>
+              <button class="ms-mini-btn ${params.u1_taylorFunc === 'x*exp(-x)' ? 'active' : ''}" onclick="MathSimulations.setTaylorPreset('x*exp(-x)', 0)">x·e⁻ˣ</button>
+            </div>
+          </div>
+
+          <!-- EXPANSION POINT (CENTER a) CARD -->
           <div class="ms-card">
-            <div class="ms-card-title">Evaluation Point (x₀, y₀)</div>
-            <div class="ms-slider-group">
-              <div class="ms-slider-head"><span>Point x₀:</span><span class="val" id="val-u1-x">${params.u1_pointX.toFixed(2)}</span></div>
-              <input type="range" class="ms-slider" min="-2.0" max="2.0" step="0.05" value="${params.u1_pointX}" oninput="MathSimulations.setParam('u1_pointX', +this.value); document.getElementById('val-u1-x').textContent=this.value;">
+            <div class="ms-card-title">
+              <span>Expansion Point (Center a)</span>
+              <span class="val" id="val-taylor-a" style="color:#f43f5e; font-weight:700;">a = ${params.u1_taylorA.toFixed(2)}</span>
             </div>
             <div class="ms-slider-group">
-              <div class="ms-slider-head"><span>Point y₀:</span><span class="val" id="val-u1-y">${params.u1_pointY.toFixed(2)}</span></div>
-              <input type="range" class="ms-slider" min="-2.0" max="2.0" step="0.05" value="${params.u1_pointY}" oninput="MathSimulations.setParam('u1_pointY', +this.value); document.getElementById('val-u1-y').textContent=this.value;">
+              <input type="range" id="slider-taylor-a" class="ms-slider" min="-4.0" max="4.0" step="0.05" value="${params.u1_taylorA}" oninput="MathSimulations.setTaylorA(+this.value)">
+            </div>
+            <div style="font-size:10px; color:#94a3b8; margin-top:3px;">Quick Center Presets:</div>
+            <div class="ms-btn-row">
+              <button class="ms-mini-btn ${Math.abs(params.u1_taylorA) < 0.01 ? 'active' : ''}" onclick="MathSimulations.setTaylorA(0)">a = 0 (Maclaurin)</button>
+              <button class="ms-mini-btn ${Math.abs(params.u1_taylorA - 1) < 0.01 ? 'active' : ''}" onclick="MathSimulations.setTaylorA(1)">a = 1</button>
+              <button class="ms-mini-btn ${Math.abs(params.u1_taylorA - 2) < 0.01 ? 'active' : ''}" onclick="MathSimulations.setTaylorA(2)">a = 2</button>
+              <button class="ms-mini-btn ${Math.abs(params.u1_taylorA - 1.57) < 0.05 ? 'active' : ''}" onclick="MathSimulations.setTaylorA(1.57)">a = π/2</button>
+              <button class="ms-mini-btn ${Math.abs(params.u1_taylorA - 3.14) < 0.05 ? 'active' : ''}" onclick="MathSimulations.setTaylorA(3.14)">a = π</button>
+              <button class="ms-mini-btn ${Math.abs(params.u1_taylorA - (-1)) < 0.01 ? 'active' : ''}" onclick="MathSimulations.setTaylorA(-1)">a = -1</button>
+            </div>
+          </div>
+
+          <!-- POLYNOMIAL DEGREE / ORDER CARD -->
+          <div class="ms-card">
+            <div class="ms-card-title">
+              <span>Taylor Polynomial Degree (n)</span>
+              <span class="val" id="val-taylor-deg" style="color:#facc15; font-weight:700;">Degree ${params.u1_taylorDegree} (P<sub>${params.u1_taylorDegree}</sub>)</span>
+            </div>
+            <div class="ms-slider-group">
+              <input type="range" class="ms-slider" min="0" max="10" step="1" value="${params.u1_taylorDegree}" oninput="MathSimulations.setTaylorDegree(+this.value)">
+            </div>
+            <div style="display:flex; gap:6px; margin:4px 0;">
+              <button class="ms-mini-btn" style="flex:1;" onclick="MathSimulations.stepTaylorDegree(-1)">➖ Degree (n - 1)</button>
+              <button class="ms-mini-btn" style="flex:1;" onclick="MathSimulations.stepTaylorDegree(1)">➕ Degree (n + 1)</button>
+              <button class="ms-mini-btn ${params.u1_taylorAutoPlaying ? 'active' : ''}" style="flex:1.2; background:${params.u1_taylorAutoPlaying ? '#ef4444' : '#10b981'}; color:#fff; font-weight:700;" onclick="MathSimulations.toggleTaylorAutoStep()">
+                ${params.u1_taylorAutoPlaying ? '⏸ Pause' : '▶ Auto Step (0→10)'}
+              </button>
+            </div>
+            <div class="ms-btn-row">
+              <button class="ms-mini-btn ${params.u1_taylorDegree === 0 ? 'active' : ''}" onclick="MathSimulations.setTaylorDegree(0)">P₀ (Const)</button>
+              <button class="ms-mini-btn ${params.u1_taylorDegree === 1 ? 'active' : ''}" onclick="MathSimulations.setTaylorDegree(1)">P₁ (Tangent)</button>
+              <button class="ms-mini-btn ${params.u1_taylorDegree === 2 ? 'active' : ''}" onclick="MathSimulations.setTaylorDegree(2)">P₂ (Parabola)</button>
+              <button class="ms-mini-btn ${params.u1_taylorDegree === 3 ? 'active' : ''}" onclick="MathSimulations.setTaylorDegree(3)">P₃ (Cubic)</button>
+              <button class="ms-mini-btn ${params.u1_taylorDegree === 4 ? 'active' : ''}" onclick="MathSimulations.setTaylorDegree(4)">P₄</button>
+              <button class="ms-mini-btn ${params.u1_taylorDegree === 5 ? 'active' : ''}" onclick="MathSimulations.setTaylorDegree(5)">P₅</button>
+              <button class="ms-mini-btn ${params.u1_taylorDegree === 7 ? 'active' : ''}" onclick="MathSimulations.setTaylorDegree(7)">P₇</button>
+              <button class="ms-mini-btn ${params.u1_taylorDegree === 10 ? 'active' : ''}" onclick="MathSimulations.setTaylorDegree(10)">P₁₀</button>
+            </div>
+          </div>
+
+          <!-- TEACHING VISUAL OPTIONS & SMARTBOARD INSERT -->
+          <div class="ms-card">
+            <div class="ms-card-title">Teaching Visuals & SmartBoard</div>
+            <div style="display:flex; flex-direction:column; gap:6px; margin-top:2px;">
+              <label style="display:flex; align-items:center; gap:8px; font-size:11px; color:#cbd5e1; cursor:pointer;">
+                <input type="checkbox" ${params.u1_taylorShowError ? 'checked' : ''} onchange="MathSimulations.setParam('u1_taylorShowError', this.checked)">
+                <span>Highlight Error Region |f(x) - Pₙ(x)|</span>
+              </label>
+              <label style="display:flex; align-items:center; gap:8px; font-size:11px; color:#cbd5e1; cursor:pointer;">
+                <input type="checkbox" ${params.u1_taylorShowTangent ? 'checked' : ''} onchange="MathSimulations.setParam('u1_taylorShowTangent', this.checked)">
+                <span>Show Tangent Line P₁(x)</span>
+              </label>
+              <button class="ms-mini-btn stamp-btn" style="background:#0284c7; color:#fff; font-weight:700; padding:6px; margin-top:2px;" onclick="MathSimulations.stampToWhiteboard()">
+                📷 Insert Graph to SmartBoard Canvas
+              </button>
+            </div>
+          </div>
+
+          <!-- TAYLOR EXPANSION TERMS BREAKDOWN -->
+          <div class="ms-card" style="border: 1px solid rgba(56, 189, 248, 0.35);">
+            <div class="ms-card-title" style="color:#38bdf8;">
+              <span>📐 Taylor Expansion Terms</span>
+            </div>
+            <div style="font-size:10px; color:#94a3b8; line-height:1.4;">
+              Formula: Pₙ(x) = ∑ [f⁽ᵏ⁾(a)/k!] (x - a)ᵏ
+            </div>
+            <div style="margin:5px 0; padding:6px; background:rgba(0,0,0,0.4); border-radius:4px; font-family:monospace; font-size:10.5px; color:#facc15; word-break:break-all; line-height:1.45;">
+              <b>P<sub>${params.u1_taylorDegree}</sub>(x) =</b> <span id="ms-taylor-poly-str">${taylorSeriesData.exprFormatted || '0'}</span>
+            </div>
+            <div id="ms-taylor-terms-list" style="max-height:180px; overflow-y:auto; display:flex; flex-direction:column; gap:4px; padding-right:2px;">
+              ${renderTaylorTermsList()}
             </div>
           </div>
         `;
-        if (activeModuleId === 'u1_partial') {
+      } else {
+        html += `
+          <!-- CUSTOM EQUATION INPUT CARD (FOR 3D SURFACES) -->
+          <div class="ms-card" style="border: 1.5px solid rgba(56, 189, 248, 0.45); background: rgba(14, 26, 50, 0.85);">
+            <div class="ms-card-title" style="color: #38bdf8;">
+              <span>⌨️ Custom Equation System</span>
+              <span style="font-size:8.5px; background:rgba(56,189,248,0.2); color:#38bdf8; padding:2px 5px; border-radius:3px;">Type & Enter</span>
+            </div>
+            <div style="font-size:10px; color:#cbd5e1;">Type any z = f(x, y) formula and press <b>Enter</b>:</div>
+            <div style="display:flex; gap:5px; margin-top:2px;">
+              <input type="text" id="ms-custom-expr-u1" class="ms-custom-input" value="${params.u1_customExpr}" placeholder="e.g. sin(x)*cos(y), x^2 - y^2" onkeydown="if(event.key==='Enter') MathSimulations.applyCustomEquation('u1')">
+              <button class="ms-mini-btn" style="background:#0284c7; color:#fff; font-weight:700; padding:0 8px;" onclick="MathSimulations.applyCustomEquation('u1')">Plot</button>
+            </div>
+            <div style="font-size:10px; color:#94a3b8; margin-top:2px;">Quick Formula Presets:</div>
+            <div class="ms-btn-row">
+              <button class="ms-mini-btn" onclick="MathSimulations.setCustomPreset('u1', '0.35*(x^2 + y^2)')">Paraboloid</button>
+              <button class="ms-mini-btn" onclick="MathSimulations.setCustomPreset('u1', '0.38*(x^2 - y^2)')">Saddle</button>
+              <button class="ms-mini-btn" onclick="MathSimulations.setCustomPreset('u1', 'sin(x)*cos(y)')">sin(x)cos(y)</button>
+              <button class="ms-mini-btn" onclick="MathSimulations.setCustomPreset('u1', 'sin(2.5*r)/(r+0.6)')">Ripples</button>
+              <button class="ms-mini-btn" onclick="MathSimulations.setCustomPreset('u1', '2.2*exp(-0.7*r^2)')">Gaussian</button>
+              <button class="ms-mini-btn" onclick="MathSimulations.setCustomPreset('u1', '0.15*(x^3 - 3*x*y^2)')">Monkey</button>
+            </div>
+            <div class="ms-slider-group" style="margin-top:4px;">
+              <div class="ms-slider-head"><span>Parameter a (Coeff):</span><span class="val" id="val-u1-a">${params.u1_customA.toFixed(2)}</span></div>
+              <input type="range" class="ms-slider" min="-3.0" max="4.0" step="0.05" value="${params.u1_customA}" oninput="MathSimulations.setParam('u1_customA', +this.value); document.getElementById('val-u1-a').textContent=(+this.value).toFixed(2);">
+            </div>
+            <div class="ms-slider-group">
+              <div class="ms-slider-head"><span>Parameter b (Scale):</span><span class="val" id="val-u1-b">${params.u1_customB.toFixed(2)}</span></div>
+              <input type="range" class="ms-slider" min="-3.0" max="4.0" step="0.05" value="${params.u1_customB}" oninput="MathSimulations.setParam('u1_customB', +this.value); document.getElementById('val-u1-b').textContent=(+this.value).toFixed(2);">
+            </div>
+            <div class="ms-slider-group">
+              <div class="ms-slider-head"><span>Parameter c (Offset):</span><span class="val" id="val-u1-c">${params.u1_customC.toFixed(2)}</span></div>
+              <input type="range" class="ms-slider" min="-3.0" max="3.0" step="0.05" value="${params.u1_customC}" oninput="MathSimulations.setParam('u1_customC', +this.value); document.getElementById('val-u1-c').textContent=(+this.value).toFixed(2);">
+            </div>
+            <div class="ms-slider-group">
+              <div class="ms-slider-head"><span>Domain Range ±R:</span><span class="val" id="val-u1-rng">${params.u1_range.toFixed(1)}</span></div>
+              <input type="range" class="ms-slider" min="1.0" max="3.8" step="0.2" value="${params.u1_range}" oninput="MathSimulations.setParam('u1_range', +this.value); document.getElementById('val-u1-rng').textContent=this.value;">
+            </div>
+          </div>
+        `;
+
+        if (activeModuleId === 'u1_surf' || activeModuleId === 'u1_partial') {
           html += `
             <div class="ms-card">
-              <div class="ms-card-title">Slice View</div>
-              <div class="ms-btn-row">
-                <button class="ms-mini-btn ${params.u1_sliceMode === 'x' ? 'active' : ''}" onclick="MathSimulations.setParam('u1_sliceMode','x')">Fix y (∂f/∂x)</button>
-                <button class="ms-mini-btn ${params.u1_sliceMode === 'y' ? 'active' : ''}" onclick="MathSimulations.setParam('u1_sliceMode','y')">Fix x (∂f/∂y)</button>
-                <button class="ms-mini-btn ${params.u1_sliceMode === 'both' ? 'active' : ''}" onclick="MathSimulations.setParam('u1_sliceMode','both')">Tangent Plane</button>
+              <div class="ms-card-title">Evaluation Point (x₀, y₀)</div>
+              <div class="ms-slider-group">
+                <div class="ms-slider-head"><span>Point x₀:</span><span class="val" id="val-u1-x">${params.u1_pointX.toFixed(2)}</span></div>
+                <input type="range" class="ms-slider" min="-2.0" max="2.0" step="0.05" value="${params.u1_pointX}" oninput="MathSimulations.setParam('u1_pointX', +this.value); document.getElementById('val-u1-x').textContent=this.value;">
+              </div>
+              <div class="ms-slider-group">
+                <div class="ms-slider-head"><span>Point y₀:</span><span class="val" id="val-u1-y">${params.u1_pointY.toFixed(2)}</span></div>
+                <input type="range" class="ms-slider" min="-2.0" max="2.0" step="0.05" value="${params.u1_pointY}" oninput="MathSimulations.setParam('u1_pointY', +this.value); document.getElementById('val-u1-y').textContent=this.value;">
+              </div>
+            </div>
+          `;
+          if (activeModuleId === 'u1_partial') {
+            html += `
+              <div class="ms-card">
+                <div class="ms-card-title">Slice View</div>
+                <div class="ms-btn-row">
+                  <button class="ms-mini-btn ${params.u1_sliceMode === 'x' ? 'active' : ''}" onclick="MathSimulations.setParam('u1_sliceMode','x')">Fix y (∂f/∂x)</button>
+                  <button class="ms-mini-btn ${params.u1_sliceMode === 'y' ? 'active' : ''}" onclick="MathSimulations.setParam('u1_sliceMode','y')">Fix x (∂f/∂y)</button>
+                  <button class="ms-mini-btn ${params.u1_sliceMode === 'both' ? 'active' : ''}" onclick="MathSimulations.setParam('u1_sliceMode','both')">Tangent Plane</button>
+                </div>
+              </div>
+            `;
+          }
+        } else if (activeModuleId === 'u1_total') {
+          html += `
+            <div class="ms-card">
+              <div class="ms-card-title">Increments (dx, dy)</div>
+              <div class="ms-slider-group">
+                <div class="ms-slider-head"><span>dx Increment:</span><span class="val">${params.u1_dx.toFixed(2)}</span></div>
+                <input type="range" class="ms-slider" min="0.05" max="1.2" step="0.05" value="${params.u1_dx}" oninput="MathSimulations.setParam('u1_dx', +this.value)">
+              </div>
+              <div class="ms-slider-group">
+                <div class="ms-slider-head"><span>dy Increment:</span><span class="val">${params.u1_dy.toFixed(2)}</span></div>
+                <input type="range" class="ms-slider" min="0.05" max="1.2" step="0.05" value="${params.u1_dy}" oninput="MathSimulations.setParam('u1_dy', +this.value)">
               </div>
             </div>
           `;
         }
-      } else if (activeModuleId === 'u1_total') {
-        html += `
-          <div class="ms-card">
-            <div class="ms-card-title">Increments (dx, dy)</div>
-            <div class="ms-slider-group">
-              <div class="ms-slider-head"><span>dx Increment:</span><span class="val">${params.u1_dx.toFixed(2)}</span></div>
-              <input type="range" class="ms-slider" min="0.05" max="1.2" step="0.05" value="${params.u1_dx}" oninput="MathSimulations.setParam('u1_dx', +this.value)">
-            </div>
-            <div class="ms-slider-group">
-              <div class="ms-slider-head"><span>dy Increment:</span><span class="val">${params.u1_dy.toFixed(2)}</span></div>
-              <input type="range" class="ms-slider" min="0.05" max="1.2" step="0.05" value="${params.u1_dy}" oninput="MathSimulations.setParam('u1_dy', +this.value)">
-            </div>
-          </div>
-        `;
-      } else if (activeModuleId === 'u1_taylor') {
-        html += `
-          <div class="ms-card">
-            <div class="ms-card-title">Taylor Polynomial Degree</div>
-            <div class="ms-btn-row">
-              <button class="ms-mini-btn ${params.u1_taylorOrder === 0 ? 'active' : ''}" onclick="MathSimulations.setParam('u1_taylorOrder',0)">P₀ (Plane)</button>
-              <button class="ms-mini-btn ${params.u1_taylorOrder === 1 ? 'active' : ''}" onclick="MathSimulations.setParam('u1_taylorOrder',1)">P₁ (Tangent)</button>
-              <button class="ms-mini-btn ${params.u1_taylorOrder === 2 ? 'active' : ''}" onclick="MathSimulations.setParam('u1_taylorOrder',2)">P₂ (Quadratic)</button>
-              <button class="ms-mini-btn ${params.u1_taylorOrder === 3 ? 'active' : ''}" onclick="MathSimulations.setParam('u1_taylorOrder',3)">P₃ (Cubic)</button>
-            </div>
-          </div>
-        `;
       }
     }
 
@@ -1422,6 +1938,17 @@ const MathSimulations = (() => {
 
   function setParam(key, val) {
     params[key] = val;
+    if (key === 'u1_taylorDegree') {
+      params.u1_taylorOrder = val;
+      recomputeTaylor();
+      buildSidebarControls();
+    } else if (key === 'u1_taylorOrder') {
+      params.u1_taylorDegree = val;
+      recomputeTaylor();
+      buildSidebarControls();
+    } else if (key === 'u1_taylorA') {
+      recomputeTaylor();
+    }
     initODEPoints();
   }
 
@@ -1584,6 +2111,26 @@ const MathSimulations = (() => {
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
 
+    if (activeModuleId === 'u1_taylor') {
+      const cx = canvas.width / 2;
+      const cy = canvas.height / 2;
+      const scale = Math.min(canvas.width, canvas.height) / 10;
+      const simX = (mouseX - cx) / scale;
+      const simY = -(mouseY - cy) / scale;
+
+      // Check if user clicked near expansion point a
+      if (Math.abs(simX - params.u1_taylorA) < 0.55) {
+        probe2D.isDraggingA = true;
+        setTaylorA(Math.max(-4.5, Math.min(4.5, simX)));
+      } else {
+        probe2D.isDraggingA = false;
+        probe2D.x = simX;
+        probe2D.y = simY;
+      }
+      probe2D.isDragging = true;
+      return;
+    }
+
     if (mod && mod.is3D) {
       view3D.isDragging = true;
       view3D.dragX = e.clientX;
@@ -1613,6 +2160,24 @@ const MathSimulations = (() => {
 
   function onCanvasMove(e) {
     const mod = getActiveModule();
+    if (activeModuleId === 'u1_taylor') {
+      if (!probe2D.isDragging) return;
+      const rect = canvas.getBoundingClientRect();
+      const cx = canvas.width / 2;
+      const cy = canvas.height / 2;
+      const scale = Math.min(canvas.width, canvas.height) / 10;
+      const simX = (e.clientX - rect.left - cx) / scale;
+      const simY = -(e.clientY - rect.top - cy) / scale;
+
+      if (probe2D.isDraggingA) {
+        setTaylorA(Math.max(-4.5, Math.min(4.5, simX)));
+      } else {
+        probe2D.x = simX;
+        probe2D.y = simY;
+      }
+      return;
+    }
+
     if (mod && mod.is3D) {
       if (!view3D.isDragging) return;
       const dx = e.clientX - view3D.dragX;
@@ -1636,6 +2201,7 @@ const MathSimulations = (() => {
   function onCanvasUp() {
     view3D.isDragging = false;
     probe2D.isDragging = false;
+    probe2D.isDraggingA = false;
   }
 
   function onCanvasWheel(e) {
@@ -1748,9 +2314,352 @@ const MathSimulations = (() => {
   }
 
   // ═════════════════════════════════════════════════════════════════════════
+  // UNIT I: 2D TAYLOR SERIES GRAPH & APPROXIMATION VISUALIZER
+  // ═════════════════════════════════════════════════════════════════════════
+  function renderUnit1Taylor(cx, cy, w, h) {
+    const scale = Math.min(w, h) / 9.5;
+    const xMin = (0 - cx) / scale;
+    const xMax = (w - cx) / scale;
+    const yMin = (cy - h) / scale;
+    const yMax = (cy - 0) / scale;
+
+    const fn = (x) => {
+      if (customFnTaylor) {
+        const v = customFnTaylor(x);
+        return isFinite(v) ? v : NaN;
+      }
+      return Math.sin(x);
+    };
+
+    const a = params.u1_taylorA;
+    const degree = params.u1_taylorDegree;
+    const coeffs = taylorSeriesData.coeffs;
+
+    const evalPoly = (x) => {
+      return evalTaylorPolynomial(x, a, coeffs);
+    };
+
+    // 1. Dark Gradient Background
+    const bgGrad = ctx.createRadialGradient(cx, cy, 40, cx, cy, Math.max(w, h));
+    bgGrad.addColorStop(0, '#0c1527');
+    bgGrad.addColorStop(1, '#050a14');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, w, h);
+
+    // 2. Sub-Grid (step 0.5)
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.035)';
+    ctx.lineWidth = 1;
+    for (let x = Math.floor(xMin * 2) / 2; x <= xMax; x += 0.5) {
+      if (Math.abs(x % 1) < 0.01) continue;
+      const sx = cx + x * scale;
+      ctx.beginPath(); ctx.moveTo(sx, 0); ctx.lineTo(sx, h); ctx.stroke();
+    }
+    for (let y = Math.floor(yMin * 2) / 2; y <= yMax; y += 0.5) {
+      if (Math.abs(y % 1) < 0.01) continue;
+      const sy = cy - y * scale;
+      ctx.beginPath(); ctx.moveTo(0, sy); ctx.lineTo(w, sy); ctx.stroke();
+    }
+
+    // 3. Major Grid (step 1.0)
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+    ctx.lineWidth = 1;
+    for (let x = Math.floor(xMin); x <= xMax; x += 1) {
+      if (Math.abs(x) < 0.01) continue;
+      const sx = cx + x * scale;
+      ctx.beginPath(); ctx.moveTo(sx, 0); ctx.lineTo(sx, h); ctx.stroke();
+    }
+    for (let y = Math.floor(yMin); y <= yMax; y += 1) {
+      if (Math.abs(y) < 0.01) continue;
+      const sy = cy - y * scale;
+      ctx.beginPath(); ctx.moveTo(0, sy); ctx.lineTo(w, sy); ctx.stroke();
+    }
+
+    // 4. Primary Coordinate Axes
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.moveTo(0, cy); ctx.lineTo(w, cy);
+    ctx.moveTo(cx, 0); ctx.lineTo(cx, h);
+    ctx.stroke();
+
+    drawArrow(w - 22, cy, w - 2, cy, 'rgba(255, 255, 255, 0.75)', 2, 7);
+    drawArrow(cx, 22, cx, 2, 'rgba(255, 255, 255, 0.75)', 2, 7);
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+    ctx.font = 'bold 12px Inter, system-ui, sans-serif';
+    ctx.fillText('x', w - 16, cy + 18);
+    ctx.fillText('y', cx + 10, 18);
+
+    // Numbers along axes
+    ctx.font = '10px Inter, system-ui, sans-serif';
+    ctx.fillStyle = 'rgba(148, 163, 184, 0.75)';
+    for (let x = Math.floor(xMin); x <= xMax; x += 1) {
+      if (Math.abs(x) < 0.01) continue;
+      const sx = cx + x * scale;
+      ctx.beginPath(); ctx.moveTo(sx, cy - 3); ctx.lineTo(sx, cy + 3); ctx.stroke();
+      ctx.fillText(x.toString(), sx - 5, cy + 15);
+    }
+    for (let y = Math.floor(yMin); y <= yMax; y += 1) {
+      if (Math.abs(y) < 0.01) continue;
+      const sy = cy - y * scale;
+      ctx.beginPath(); ctx.moveTo(cx - 3, sy); ctx.lineTo(cx + 3, sy); ctx.stroke();
+      ctx.fillText(y.toString(), cx + 7, sy + 3);
+    }
+
+    // 5. Shaded Error Region |f(x) - P_n(x)|
+    if (params.u1_taylorShowError) {
+      const errSpan = 3.5;
+      const errX1 = Math.max(xMin, a - errSpan);
+      const errX2 = Math.min(xMax, a + errSpan);
+      const stepPx = 3;
+
+      ctx.fillStyle = 'rgba(244, 63, 94, 0.12)';
+      ctx.beginPath();
+      let started = false;
+      for (let px = cx + errX1 * scale; px <= cx + errX2 * scale; px += stepPx) {
+        const xm = (px - cx) / scale;
+        const yVal = fn(xm);
+        if (isNaN(yVal) || Math.abs(yVal) > 25) continue;
+        const sy = cy - yVal * scale;
+        if (!started) { ctx.moveTo(px, sy); started = true; }
+        else ctx.lineTo(px, sy);
+      }
+      for (let px = cx + errX2 * scale; px >= cx + errX1 * scale; px -= stepPx) {
+        const xm = (px - cx) / scale;
+        const yVal = evalPoly(xm);
+        if (isNaN(yVal) || Math.abs(yVal) > 25) continue;
+        const sy = cy - yVal * scale;
+        ctx.lineTo(px, sy);
+      }
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // 6. Tangent Line P_1(x) (when degree > 1 and enabled)
+    if (params.u1_taylorShowTangent && degree > 1 && coeffs.length >= 2) {
+      ctx.strokeStyle = 'rgba(168, 85, 247, 0.55)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      const c0 = coeffs[0];
+      const c1 = coeffs[1] || 0;
+      const tanX1 = xMin;
+      const tanY1 = c0 + c1 * (tanX1 - a);
+      const tanX2 = xMax;
+      const tanY2 = c0 + c1 * (tanX2 - a);
+      ctx.moveTo(cx + tanX1 * scale, cy - tanY1 * scale);
+      ctx.lineTo(cx + tanX2 * scale, cy - tanY2 * scale);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // 7. Original Function y = f(x) (Cyan)
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 3.2;
+    ctx.shadowColor = 'rgba(56, 189, 248, 0.45)';
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    let plottingF = false;
+    const stepX = 2;
+    for (let px = 0; px <= w; px += stepX) {
+      const xm = (px - cx) / scale;
+      const ym = fn(xm);
+      if (isNaN(ym) || Math.abs(ym) > 30) {
+        plottingF = false;
+        continue;
+      }
+      const py = cy - ym * scale;
+      if (!plottingF) {
+        ctx.moveTo(px, py);
+        plottingF = true;
+      } else {
+        ctx.lineTo(px, py);
+      }
+    }
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // 8. Taylor Polynomial y = P_n(x) (Gold/Amber)
+    ctx.strokeStyle = '#facc15';
+    ctx.lineWidth = 3.5;
+    ctx.shadowColor = 'rgba(250, 204, 21, 0.5)';
+    ctx.shadowBlur = 10;
+    ctx.beginPath();
+    let plottingP = false;
+    for (let px = 0; px <= w; px += stepX) {
+      const xm = (px - cx) / scale;
+      const ym = evalPoly(xm);
+      if (isNaN(ym) || Math.abs(ym) > 35) {
+        plottingP = false;
+        continue;
+      }
+      const py = cy - ym * scale;
+      if (!plottingP) {
+        ctx.moveTo(px, py);
+        plottingP = true;
+      } else {
+        ctx.lineTo(px, py);
+      }
+    }
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // 9. Expansion Center Marker (a, f(a)) & Contact Beacon
+    const fa = fn(a);
+    const saX = cx + a * scale;
+    const saY = cy - fa * scale;
+    const sAxisY = cy;
+
+    if (isFinite(fa)) {
+      ctx.strokeStyle = 'rgba(244, 63, 94, 0.7)';
+      ctx.lineWidth = 1.6;
+      ctx.setLineDash([4, 3]);
+      ctx.beginPath();
+      ctx.moveTo(saX, sAxisY);
+      ctx.lineTo(saX, saY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.fillStyle = '#f43f5e';
+      ctx.beginPath();
+      ctx.arc(saX, sAxisY, 4.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#f43f5e';
+      ctx.font = 'bold 10px Inter, system-ui, sans-serif';
+      ctx.fillText(`a = ${a.toFixed(2)}`, saX - 18, sAxisY + (fa >= 0 ? 16 : -8));
+
+      const pulse = 1 + 0.28 * Math.sin(timeVal * 4);
+      ctx.strokeStyle = 'rgba(244, 63, 94, 0.45)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(saX, saY, 9 * pulse, 0, Math.PI * 2);
+      ctx.stroke();
+
+      drawGlowDot(saX, saY, '#f43f5e', 7.5, `(${a.toFixed(2)}, ${fa.toFixed(2)})`);
+    }
+
+    // 10. Interactive Stylus / Probe Tooltip
+    if (probe2D.x !== undefined && probe2D.x >= xMin && probe2D.x <= xMax) {
+      const pxM = probe2D.x;
+      const fVal = fn(pxM);
+      const pVal = evalPoly(pxM);
+      const err = Math.abs(fVal - pVal);
+      const prX = cx + pxM * scale;
+      const prYF = cy - fVal * scale;
+      const prYP = cy - pVal * scale;
+
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([3, 2]);
+      ctx.beginPath();
+      ctx.moveTo(prX, 0);
+      ctx.lineTo(prX, h);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      if (isFinite(fVal)) {
+        ctx.fillStyle = '#38bdf8';
+        ctx.beginPath(); ctx.arc(prX, prYF, 4.5, 0, Math.PI * 2); ctx.fill();
+      }
+      if (isFinite(pVal)) {
+        ctx.fillStyle = '#facc15';
+        ctx.beginPath(); ctx.arc(prX, prYP, 4.5, 0, Math.PI * 2); ctx.fill();
+      }
+
+      const hudW = 185;
+      const hudH = 72;
+      let hudX = prX + 16;
+      let hudY = Math.min(prYF, prYP) - 40;
+      if (hudX + hudW > w - 10) hudX = prX - hudW - 16;
+      if (hudY < 55) hudY = 55;
+      if (hudY + hudH > h - 40) hudY = h - hudH - 40;
+
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.roundRect(hudX, hudY, hudW, hudH, 6);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.font = 'bold 10px Inter, system-ui, sans-serif';
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillText(`Probe x = ${pxM.toFixed(3)}`, hudX + 10, hudY + 16);
+
+      ctx.font = '10px Inter, system-ui, sans-serif';
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillText(`f(x)  = ${isFinite(fVal) ? fVal.toFixed(4) : 'undef'}`, hudX + 10, hudY + 32);
+
+      ctx.fillStyle = '#facc15';
+      ctx.fillText(`Pₙ(x) = ${isFinite(pVal) ? pVal.toFixed(4) : 'undef'}`, hudX + 10, hudY + 48);
+
+      ctx.fillStyle = err < 0.05 ? '#4ade80' : (err < 0.5 ? '#f59e0b' : '#f43f5e');
+      ctx.fillText(`|f - Pₙ| = ${isFinite(err) ? err.toFixed(4) : 'undef'}`, hudX + 10, hudY + 64);
+    }
+
+    // 11. On-Screen Glass Legend (Top Left)
+    const legW = 215;
+    const legH = 74;
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.28)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(14, 14, legW, legH, 8);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.font = 'bold 11px Inter, system-ui, sans-serif';
+    ctx.fillStyle = '#38bdf8';
+    ctx.beginPath(); ctx.arc(26, 30, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillText(`f(x) = ${params.u1_taylorCustom}`, 36, 34);
+
+    ctx.fillStyle = '#facc15';
+    ctx.beginPath(); ctx.arc(26, 48, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillText(`Taylor P${degree}(x) (Degree ${degree})`, 36, 52);
+
+    ctx.fillStyle = '#f43f5e';
+    ctx.beginPath(); ctx.arc(26, 66, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillText(`Center a = ${a.toFixed(2)}`, 36, 70);
+
+    // 12. Top-Right Accuracy & Contact Order Badge
+    const badgeW = 280;
+    const badgeH = 46;
+    const badgeX = w - badgeW - 14;
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+    ctx.strokeStyle = 'rgba(250, 204, 21, 0.35)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(badgeX, 14, badgeW, badgeH, 8);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.font = 'bold 11px Inter, system-ui, sans-serif';
+    ctx.fillStyle = '#facc15';
+    ctx.fillText(`Taylor Polynomial · Order n = ${degree}`, badgeX + 12, 31);
+    ctx.font = '9.5px Inter, system-ui, sans-serif';
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText(`Contact: Pₙ⁽ᵏ⁾(a) = f⁽ᵏ⁾(a) for k = 0 … ${degree}`, badgeX + 12, 46);
+
+    // 13. Telemetry Bar Readout
+    updateTelemetry(`
+      <span>f(x) = <span class="badge" style="color:#38bdf8;">${params.u1_taylorCustom}</span></span>
+      <span>Center a = <span class="badge" style="color:#f43f5e;">${a.toFixed(2)}</span></span>
+      <span>Degree n = <span class="badge" style="color:#facc15;">${degree}</span></span>
+      <span>P<sub>${degree}</sub>(x) = <span class="badge" style="color:#facc15; font-family:monospace;">${taylorSeriesData.exprFormatted || '0'}</span></span>
+      <span style="color:#94a3b8;">Drag red beacon to move center (a) · Move cursor to probe error</span>
+    `);
+  }
+
+  // ═════════════════════════════════════════════════════════════════════════
   // UNIT I RENDERER: Differential Calculus (Custom Equation & Viewport)
   // ═════════════════════════════════════════════════════════════════════════
   function renderUnit1(cx, cy, w, h) {
+    if (activeModuleId === 'u1_taylor') {
+      renderUnit1Taylor(cx, cy, w, h);
+      return;
+    }
+
     const gridN = 26;
     const range = params.u1_range || 2.2;
     const step = (range * 2) / gridN;
@@ -2457,6 +3366,13 @@ const MathSimulations = (() => {
     setParam,
     applyCustomEquation,
     setCustomPreset,
+    applyTaylorFunction,
+    setTaylorPreset,
+    setTaylorA,
+    setTaylorDegree,
+    stepTaylorDegree,
+    toggleTaylorAutoStep,
+    recomputeTaylor,
     togglePen,
     clearAnnotations,
     undo,
