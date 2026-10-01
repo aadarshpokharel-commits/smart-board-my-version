@@ -32,9 +32,88 @@ const Drawing = (() => {
     linePreviewCtx = pc.getContext('2d');
   }
 
+  // ── Eraser Cursor Overlay ────────────────────────────────────────────────
+  // A visible circle that follows the pointer when the eraser tool is active,
+  // showing the exact erase radius at all times.
+  let _eraserCursor = null;
+
+  function _getEraserCursor() {
+    if (_eraserCursor) return _eraserCursor;
+    let cur = document.getElementById('eraser-cursor-overlay');
+    if (!cur) {
+      cur = document.createElement('div');
+      cur.id = 'eraser-cursor-overlay';
+      cur.style.cssText = [
+        'position:fixed',
+        'pointer-events:none',
+        'z-index:9999',
+        'border-radius:50%',
+        'border:2.5px solid rgba(255,255,255,0.85)',
+        'box-shadow:0 0 0 1.5px rgba(0,0,0,0.55),0 0 8px 2px rgba(255,255,255,0.25)',
+        'background:rgba(255,255,255,0.07)',
+        'transition:width 0.1s,height 0.1s',
+        'display:none',
+        'transform:translate(-50%,-50%)',
+        'will-change:transform'
+      ].join(';');
+      document.body.appendChild(cur);
+    }
+    _eraserCursor = cur;
+    return cur;
+  }
+
+  function _showEraserCursor(clientX, clientY, diameter) {
+    const cur = _getEraserCursor();
+    const d = Math.max(8, diameter) + 'px';
+    cur.style.width  = d;
+    cur.style.height = d;
+    cur.style.left   = clientX + 'px';
+    cur.style.top    = clientY  + 'px';
+    cur.style.display = 'block';
+  }
+
+  function _hideEraserCursor() {
+    const cur = _eraserCursor || document.getElementById('eraser-cursor-overlay');
+    if (cur) cur.style.display = 'none';
+  }
+
+  function _updateEraserCursorFromEvent(e) {
+    const tool = (typeof App !== 'undefined') ? App.currentTool : 'pen';
+    const penSz = (typeof App !== 'undefined') ? App.penSize : 3;
+    const eSize = (typeof App !== 'undefined' && App.eraserSize) ? App.eraserSize : penSz * 8;
+    if (tool === 'eraser' || _isBarrelErasing) {
+      const zoom = (typeof Canvas !== 'undefined' && Canvas.getZoom) ? Canvas.getZoom() : 1;
+      // eSize is in board-space; display diameter accounts for zoom
+      _showEraserCursor(e.clientX, e.clientY, eSize * zoom);
+    } else {
+      _hideEraserCursor();
+    }
+  }
+
   // ─────────────────────────────────────────────
   // STROKE CORE — Board Coordinates & Zero Latency
   // ─────────────────────────────────────────────
+  // ── Barrel-button / pen-eraser-end state ─────────────────────────────────
+  // Set to true when the stylus barrel button or eraser end is held,
+  // so we erase even if App.currentTool !== 'eraser'.
+  let _isBarrelErasing = false;
+
+  function _applyEraseAtPoint(ctx, qx, qy, eSize, mode) {
+    // Always wipe pixels on the draw canvas (visible erase feedback)
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.lineWidth = eSize;
+    ctx.fillStyle = 'rgba(0,0,0,1)';
+    ctx.beginPath();
+    ctx.arc(qx, qy, eSize * 0.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // In 'stroke' mode: remove full stroke objects that overlap the eraser circle
+    // In 'area'   mode: only pixels are erased (no stroke object removal)
+    if (mode !== 'area' && typeof Canvas !== 'undefined' && Canvas.eraseAtPoint) {
+      Canvas.eraseAtPoint(qx, qy, eSize * 0.5);
+    }
+  }
+
   function startStrokeAt(bx, by, pressure = 0.5) {
     if (typeof UI !== 'undefined' && UI.closeAllFlyouts) {
       UI.closeAllFlyouts();
@@ -60,21 +139,14 @@ const Drawing = (() => {
     const tool   = (typeof App !== 'undefined') ? App.currentTool : 'pen';
     const penSz  = (typeof App !== 'undefined') ? App.penSize : 3;
     const curCol = (typeof App !== 'undefined') ? App.currentColor : '#ffffff';
+    const eMode  = (typeof App !== 'undefined') ? (App.eraserMode || 'stroke') : 'stroke';
 
-    if (tool === 'eraser') {
+    if (tool === 'eraser' || _isBarrelErasing) {
       if (typeof Canvas !== 'undefined' && Canvas.beginEraseSession) {
         Canvas.beginEraseSession();
       }
       const eSize = (typeof App !== 'undefined' && App.eraserSize) ? App.eraserSize : penSz * 8;
-      ctx.globalCompositeOperation = 'destination-out';
-      ctx.lineWidth   = eSize;
-      ctx.fillStyle   = 'rgba(0,0,0,1)';
-      ctx.beginPath();
-      ctx.arc(qx, qy, eSize * 0.5, 0, Math.PI * 2);
-      ctx.fill();
-      if (typeof Canvas !== 'undefined' && Canvas.eraseAtPoint) {
-        Canvas.eraseAtPoint(qx, qy, eSize * 0.5);
-      }
+      _applyEraseAtPoint(ctx, qx, qy, eSize, eMode);
     } else if (tool === 'highlighter') {
       ctx.globalCompositeOperation = 'source-over';
       const hSize = penSz * 5;
@@ -126,14 +198,11 @@ const Drawing = (() => {
     const penSz  = (typeof App !== 'undefined') ? App.penSize : 3;
     const curCol = (typeof App !== 'undefined') ? App.currentColor : '#ffffff';
 
-    if (tool === 'eraser') {
+    const eMode  = (typeof App !== 'undefined') ? (App.eraserMode || 'stroke') : 'stroke';
+    if (tool === 'eraser' || _isBarrelErasing) {
       const eSize = (typeof App !== 'undefined' && App.eraserSize) ? App.eraserSize : penSz * 8;
-      ctx.globalCompositeOperation = 'destination-out';
-      ctx.lineWidth   = eSize;
+      _applyEraseAtPoint(ctx, qx, qy, eSize, eMode);
       ctx.strokeStyle = 'rgba(0,0,0,1)';
-      if (typeof Canvas !== 'undefined' && Canvas.eraseAtPoint) {
-        Canvas.eraseAtPoint(qx, qy, eSize * 0.5);
-      }
     } else if (tool === 'highlighter') {
       ctx.globalCompositeOperation = 'source-over';
       ctx.lineWidth   = penSz * 5;
@@ -187,12 +256,14 @@ const Drawing = (() => {
           AreaSolver.onStrokeEnd();
         }
       }
-    } else if (tool === 'eraser') {
+    } else if (tool === 'eraser' || _isBarrelErasing) {
       if (typeof Canvas !== 'undefined' && Canvas.endEraseSession) {
         Canvas.endEraseSession();
       }
     }
 
+    _isBarrelErasing = false;
+    _hideEraserCursor();
     points = [];
     const ctx = getDrawCtx();
     if (ctx) ctx.globalCompositeOperation = 'source-over';
@@ -203,15 +274,29 @@ const Drawing = (() => {
   // Supports Stylus, Pen, Touch & Mouse
   // ─────────────────────────────────────────────
   function onPointerDown(e) {
-    if (e.button !== undefined && e.button !== 0) return;
     const tool = (typeof App !== 'undefined') ? App.currentTool : 'pen';
-    if (tool !== 'pen' && tool !== 'highlighter' && tool !== 'eraser') return;
+
+    // Stylus barrel button (button 2) or pen eraser end (button 5 / buttons & 32)
+    // Treat these as forced eraser actions without switching the active tool.
+    const isBarrel = (e.pointerType === 'pen') &&
+                     ((e.button === 5) || ((e.buttons & 32) !== 0));
+    if (isBarrel) {
+      _isBarrelErasing = true;
+    } else if (e.button !== undefined && e.button !== 0) {
+      return;
+    } else {
+      _isBarrelErasing = false;
+    }
+
+    if (!_isBarrelErasing && tool !== 'pen' && tool !== 'highlighter' && tool !== 'eraser') return;
 
     e.preventDefault();
     try {
       e.target.setPointerCapture(e.pointerId);
     } catch(err) {}
     activePointerId = e.pointerId;
+
+    _updateEraserCursorFromEvent(e);
 
     const pos = (typeof Canvas !== 'undefined' && Canvas.getBoardPos)
       ? Canvas.getBoardPos(e)
@@ -221,8 +306,14 @@ const Drawing = (() => {
   }
 
   function onPointerMove(e) {
+    // Always track cursor when eraser tool is active (even without drawing)
+    const toolNow = (typeof App !== 'undefined') ? App.currentTool : 'pen';
+    if (toolNow === 'eraser') _updateEraserCursorFromEvent(e);
+
     if (!isDrawing || (activePointerId !== null && e.pointerId !== activePointerId)) return;
     e.preventDefault();
+
+    _updateEraserCursorFromEvent(e);
 
     const events = (typeof e.getCoalescedEvents === 'function') ? e.getCoalescedEvents() : [e];
     for (let i = 0; i < events.length; i++) {
@@ -699,7 +790,21 @@ const Drawing = (() => {
     dc.addEventListener('pointermove',   onPointerMove);
     dc.addEventListener('pointerup',     onPointerUp);
     dc.addEventListener('pointercancel', onPointerCancel);
-    dc.addEventListener('pointerleave',  onPointerUp);
+    dc.addEventListener('pointerleave', (e) => {
+      if (isDrawing && activePointerId !== null && e.pointerId === activePointerId) {
+        // Stroke was in progress — end it cleanly
+        try { e.target.releasePointerCapture(e.pointerId); } catch(_) {}
+        endStroke();
+      }
+      _hideEraserCursor();
+    });
+
+
+    // Track eraser cursor hover even without pressing (shows circle as you hover)
+    document.addEventListener('pointermove', (e) => {
+      const toolNow = (typeof App !== 'undefined') ? App.currentTool : '';
+      if (toolNow === 'eraser') _updateEraserCursorFromEvent(e);
+    }, { passive: true });
 
     // Multi-touch gesture eraser interception & palm rejection
     dc.addEventListener('touchstart',  onDrawTouchStart, { passive: false });
@@ -708,6 +813,8 @@ const Drawing = (() => {
     dc.addEventListener('touchcancel', onDrawTouchEnd,   { passive: false });
 
     setTimeout(createPreviewCanvas, 200);
+
+
   }
 
   function syncPointerEvents() {

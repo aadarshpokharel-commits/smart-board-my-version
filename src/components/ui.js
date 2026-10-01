@@ -479,6 +479,13 @@ const UI = (() => {
     document.querySelectorAll('.fp-eraser-size-btn').forEach(btn => {
       btn.classList.toggle('active', Number(btn.dataset.esize) === Number(curEraserSize));
     });
+
+    // Synchronize eraser mode buttons
+    const curEraserMode = (typeof App !== 'undefined' && App.eraserMode) ? App.eraserMode : 'stroke';
+    const modeStroke = document.getElementById('eraser-mode-stroke');
+    const modeArea   = document.getElementById('eraser-mode-area');
+    if (modeStroke) modeStroke.classList.toggle('active', curEraserMode === 'stroke');
+    if (modeArea)   modeArea.classList.toggle('active',   curEraserMode === 'area');
   }
 
   function selectPenSize(sz) {
@@ -493,8 +500,14 @@ const UI = (() => {
     if (typeof App !== 'undefined') {
       App.eraserSize = sz;
     }
+    syncPenPanel(); // keep flyout open; sync highlights only
+  }
+
+  function selectEraserMode(mode) {
+    if (typeof App !== 'undefined') {
+      App.eraserMode = mode;
+    }
     syncPenPanel();
-    closeEraserFlyout();
   }
 
   let shapesSectionHidden = false;
@@ -861,9 +874,9 @@ const UI = (() => {
             <svg viewBox="0 0 32 32" fill="none"><polygon points="16,4 28,26 4,26" stroke="#0284c7" stroke-width="2" fill="none"/><circle cx="16" cy="4" r="2.5" fill="#facc15"/><circle cx="28" cy="26" r="2.5" fill="#facc15"/><circle cx="4" cy="26" r="2.5" fill="#facc15"/><path d="M7,26 A8,8 0 0,0 12,23" stroke="#38bdf8" stroke-width="1.5" fill="none"/></svg>
             <span class="qlabel">Geo Proofs</span>
           </button>
-          <button class="fsc-quick-tool-btn is-sim-btn" onclick="MathSimulations.show(); UI.closeShapesFlyout();" title="📐 U21MA101 / U25RMA101 Higher Mathematics Simulation Plan (Units I–V)">
-            <svg viewBox="0 0 32 32" fill="none"><path d="M4,24 Q14,24 16,14 T28,4" stroke="#38bdf8" stroke-width="2.2" fill="none"/><line x1="8" y1="22" x2="24" y2="6" stroke="#facc15" stroke-width="1.8"/><circle cx="16" cy="14" r="2.5" fill="#ef4444"/><circle cx="24" cy="6" r="2" fill="#38bdf8"/><text x="16" y="27" font-size="5.5" font-weight="bold" fill="#38bdf8" text-anchor="middle">U21MA101</text></svg>
-            <span class="qlabel">U21MA101</span>
+          <button class="fsc-quick-tool-btn is-sim-btn" onclick="MathSimulations.show(); UI.closeShapesFlyout();" title="📐 U25MA102 Matrices and Calculus Simulation Plan (Units I–V)">
+            <svg viewBox="0 0 32 32" fill="none"><path d="M4,24 Q14,24 16,14 T28,4" stroke="#38bdf8" stroke-width="2.2" fill="none"/><line x1="8" y1="22" x2="24" y2="6" stroke="#facc15" stroke-width="1.8"/><circle cx="16" cy="14" r="2.5" fill="#ef4444"/><circle cx="24" cy="6" r="2" fill="#38bdf8"/><text x="16" y="27" font-size="5.5" font-weight="bold" fill="#38bdf8" text-anchor="middle">U25MA102</text></svg>
+            <span class="qlabel">U25MA102</span>
           </button>
         </div>`;
     } else if (domain === 'physics') {
@@ -2033,7 +2046,7 @@ const UI = (() => {
     toggleShapesFlyout, openShapesFlyout, closeShapesFlyout, closeAllFlyouts,
     toggleInsertFlyout, openInsertFlyout, closeInsertFlyout, openPdfPicker, handlePdfSelect,
     selectSubtool, syncSubtoolButtons, cyclePenSize, selectFlyoutColor,
-    selectPenSize, selectEraserSize,
+    selectPenSize, selectEraserSize, selectEraserMode,
     clearDrawingStrokes, filterShapesCategory, searchShapes, switchShapesDomain
   };
 })();

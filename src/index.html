@@ -54,9 +54,9 @@
       <span class="rec-dot"></span> <span>Record</span>
     </button>
 
-    <button class="tb-btn math-sim-btn" id="btn-math-sim" onclick="MathSimulations.show()" title="U21MA101 / U25RMA101 Mathematics Simulation Plan (Units I – V)">
+    <button class="tb-btn math-sim-btn" id="btn-math-sim" onclick="MathSimulations.show()" title="U25MA102 (Regulations 2025) Mathematics Simulation Plan (Units I – V)">
       <svg viewBox="0 0 20 20" fill="none" style="width:15px;height:15px;"><path d="M3 16L7 6l4 8 3-10 3 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="7" cy="6" r="1.5" fill="#38bdf8"/><circle cx="11" cy="14" r="1.5" fill="#facc15"/><circle cx="14" cy="4" r="1.5" fill="#ef4444"/></svg>
-      <span>Math Lab (U21MA101)</span>
+      <span>Math Lab (U25MA102)</span>
     </button>
 
     <!-- WORKSPACE PARTITION / SCREEN SPLIT CONTROL -->
@@ -182,7 +182,7 @@
       <button class="dd-item" onclick="MathSimulations.show(); UI.closeAllDropdowns()">
         <div class="dd-item-left">
           <svg viewBox="0 0 20 20" fill="none"><path d="M3 16L7 6l4 8 3-10 3 6" stroke="#38bdf8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="7" cy="6" r="1.5" fill="#38bdf8"/><circle cx="11" cy="14" r="1.5" fill="#facc15"/></svg>
-          U25RMA101 Math Simulations
+          U25MA102 Matrices and Calculus
         </div>
         <span class="dd-shortcut">Units I–V</span>
       </button>
@@ -490,23 +490,47 @@
       </div>
     </div>
 
-    <!-- 4b. Eraser Flyout Pill (Only Eraser Sizes, Centered) -->
+    <!-- 4b. Eraser Flyout Pill (Mode + Sizes) -->
     <div id="flyout-eraser" class="flyout-eraser-pill hidden">
-      <!-- Size 1: Small Eraser (12px) -->
-      <button class="fp-eraser-size-btn" data-esize="12" onclick="UI.selectEraserSize(12)" title="Fine Eraser (12px)">
-        <span class="fp-eraser-dot" style="width:6px;height:6px;"></span>
+
+      <!-- Mode Toggle Row -->
+      <div class="fp-eraser-mode-row" title="Eraser mode">
+        <button class="fp-eraser-mode-btn active" id="eraser-mode-stroke"
+                onclick="UI.selectEraserMode('stroke')" title="Stroke Eraser — removes entire stroke">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 18L9 6l6 12"/><line x1="5.5" y1="14" x2="14.5" y2="14"/></svg>
+          Stroke
+        </button>
+        <button class="fp-eraser-mode-btn" id="eraser-mode-area"
+                onclick="UI.selectEraserMode('area')" title="Area Eraser — erases pixels under the cursor only">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+          Area
+        </button>
+      </div>
+
+      <div class="fp-eraser-divider"></div>
+
+      <!-- Size label -->
+      <div class="fp-eraser-size-label">Size</div>
+
+      <!-- Size Buttons -->
+      <button class="fp-eraser-size-btn" data-esize="12" onclick="UI.selectEraserSize(12)" title="Fine (12px)">
+        <span class="fp-eraser-dot" style="width:5px;height:5px;"></span>
       </button>
 
-      <!-- Size 2: Medium Eraser (26px) -->
-      <button class="fp-eraser-size-btn active" data-esize="26" onclick="UI.selectEraserSize(26)" title="Medium Eraser (26px)">
-        <span class="fp-eraser-dot" style="width:11px;height:11px;"></span>
+      <button class="fp-eraser-size-btn active" data-esize="26" onclick="UI.selectEraserSize(26)" title="Medium (26px)">
+        <span class="fp-eraser-dot" style="width:10px;height:10px;"></span>
       </button>
 
-      <!-- Size 3: Large Eraser (50px) -->
-      <button class="fp-eraser-size-btn" data-esize="50" onclick="UI.selectEraserSize(50)" title="Large Eraser (50px)">
-        <span class="fp-eraser-dot" style="width:17px;height:17px;"></span>
+      <button class="fp-eraser-size-btn" data-esize="50" onclick="UI.selectEraserSize(50)" title="Large (50px)">
+        <span class="fp-eraser-dot" style="width:16px;height:16px;"></span>
+      </button>
+
+      <button class="fp-eraser-size-btn" data-esize="80" onclick="UI.selectEraserSize(80)" title="XL (80px)">
+        <span class="fp-eraser-dot" style="width:22px;height:22px;"></span>
       </button>
     </div>
+
+
 
     <!-- 5. Shapes & Instruments Flyout Card (Organized Teacher Hub) -->
     <div id="flyout-shapes" class="flyout-shapes-card hidden">

@@ -2621,21 +2621,32 @@ body.board-fullscreen #fs-page-control {
 }
 
 /* ══════════════════════════════════════════════════════
-   4b. ERASER FLYOUT PILL (Compact Horizontal Pill, Beside Eraser)
+   4b. ERASER FLYOUT PILL (Vertical, Mode + Sizes)
    ══════════════════════════════════════════════════════ */
+
+/* Hide native cursor over canvas when eraser is active — custom circle shows instead */
+body[data-tool="eraser"] #draw-canvas,
+body[data-tool="eraser"] #shape-canvas,
+body[data-tool="eraser"] canvas,
+body[data-tool="eraser"] .canvas-viewport,
+body[data-tool="eraser"] #canvas-zone {
+  cursor: none !important;
+}
+
+
 .flyout-eraser-pill {
   position: absolute;
   left: calc(100% + 10px);
-  top: 120px;
+  top: 100px;
   transform: none;
-  width: auto;
+  width: 130px;
   background: #ffffff;
-  border-radius: 20px;
-  padding: 6px 8px;
-  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.15), 0 2px 6px rgba(0, 0, 0, 0.06);
+  border-radius: 16px;
+  padding: 10px 8px;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.18), 0 2px 6px rgba(0, 0, 0, 0.08);
   border: 1px solid rgba(0, 0, 0, 0.07);
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   align-items: center;
   gap: 6px;
   z-index: 550 !important;
@@ -2643,9 +2654,68 @@ body.board-fullscreen #fs-page-control {
   pointer-events: auto;
 }
 
-.fp-eraser-size-btn {
-  width: 36px;
-  height: 36px;
+/* Mode toggle row */
+.fp-eraser-mode-row {
+  display: flex;
+  flex-direction: row;
+  gap: 4px;
+  width: 100%;
+}
+.fp-eraser-mode-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 4px 5px;
+  border-radius: 10px;
+  border: 1.5px solid #e5e7eb;
+  background: #f9fafb;
+  color: #6b7280;
+  font-size: 10px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.14s ease;
+  line-height: 1;
+}
+.fp-eraser-mode-btn:hover {
+  border-color: #93c5fd;
+  background: #eff6ff;
+  color: #2563eb;
+}
+.fp-eraser-mode-btn.active {
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37,99,235,0.18);
+}
+.fp-eraser-mode-btn svg {
+  pointer-events: none;
+}
+
+/* Divider between mode and size sections */
+.fp-eraser-divider {
+  width: 100%;
+  height: 1px;
+  background: #e5e7eb;
+  margin: 2px 0;
+}
+
+/* "Size" label */
+.fp-eraser-size-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: #9ca3af;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  align-self: flex-start;
+  padding-left: 4px;
+}
+
+/* Size buttons — now in a horizontal row inside the vertical pill */
+.flyout-eraser-pill .fp-eraser-size-btn {
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   border: 2px solid #e5e7eb;
   background: #ffffff;
@@ -2657,7 +2727,20 @@ body.board-fullscreen #fs-page-control {
   position: relative;
   flex-shrink: 0;
   padding: 0;
+  align-self: center;
 }
+/* Lay size buttons in a 2×2 grid inside the pill */
+.flyout-eraser-pill {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto auto;
+  gap: 6px;
+}
+/* Mode row spans full width */
+.fp-eraser-mode-row  { grid-column: 1 / -1; }
+.fp-eraser-divider   { grid-column: 1 / -1; margin: 0; }
+.fp-eraser-size-label{ grid-column: 1 / -1; }
+
 .fp-eraser-size-btn:hover {
   transform: scale(1.08);
   border-color: #2563eb;
@@ -2679,6 +2762,7 @@ body.board-fullscreen #fs-page-control {
 .fp-eraser-size-btn.active .fp-eraser-dot {
   background: #2563eb;
 }
+
 
 /* Color Dots — 2-column compact grid */
 .fp-colors-grid {

@@ -9,6 +9,7 @@ const App = (() => {
   let currentColor  = '#0f172a';
   let penSize       = 2;
   let eraserSize    = 26;
+  let eraserMode    = 'stroke'; // 'stroke' | 'area'
   let activeChapter = 1;
   let activeSubject = 'mathematics';  // 'mathematics' | 'science' | ...
   let recording     = false;
@@ -410,6 +411,7 @@ const App = (() => {
   function setTool(tool) {
     const changed = currentTool !== tool;
     currentTool = tool;
+    document.body.dataset.tool = tool; // lets CSS target cursor by tool
 
     // Route tool changes to active split screen partition if active
     if (typeof WorkspaceSplit !== 'undefined' && WorkspaceSplit.getMode() !== 'normal') {
@@ -1414,6 +1416,9 @@ const App = (() => {
         WorkspaceSplit.setActivePartitionEraserSize(v);
       }
     },
+    get eraserMode()   { return eraserMode; },
+    set eraserMode(v)  { eraserMode = (v === 'area') ? 'area' : 'stroke'; },
+
     setPenSize: (v) => {
       penSize = v;
       if (typeof WorkspaceSplit !== 'undefined' && WorkspaceSplit.getMode() !== 'normal') {

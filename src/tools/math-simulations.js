@@ -37,6 +37,9 @@ const MathSimulations = (() => {
   let redoStack = [];
   const MAX_HISTORY = 25;
 
+  // Forward declaration of simulation parameters to ensure availability for CURRICULUM getters
+  let params;
+
   // 3D Viewport State (for 3D surfaces and vector fields)
   const view3D = {
     yaw: -0.65,    // horizontal rotation in radians
@@ -82,7 +85,7 @@ const MathSimulations = (() => {
         { id: 'u1_surf', name: 'Functions of Two Variables', short: 'Two Variables', icon: '🌐', is3D: true, desc: 'Interactive 3D surface z = f(x,y) with custom equation input, orbit rotation, and coordinate probes.' },
         { id: 'u1_partial', name: 'Partial Derivatives', short: 'Partial Derivs', icon: '✂️', is3D: true, desc: 'Fix x or y to generate cross-sections, tangent slopes ∂f/∂x and ∂f/∂y, and the tangent plane.' },
         { id: 'u1_total', name: 'Total Derivatives', short: 'Total Derivs', icon: '📈', is3D: true, desc: 'Change increments dx and dy; visualize resulting differential dz vs true surface increment Δz.' },
-        { id: 'u1_taylor', name: "Taylor Series Graph & Expansion", short: "Taylor's Series", icon: '✨', get is3D() { return typeof params !== 'undefined' ? params.u1_taylorMode !== '1d' : true; }, desc: 'Interactive two-variable 3D & single-variable 2D Taylor polynomial approximation with live order control, step-by-step term expansion, and SmartBoard canvas export.' },
+        { id: 'u1_taylor', name: "Taylor Series Graph & Expansion", short: "Taylor's Series", icon: '✨', get is3D() { return params ? params.u1_taylorMode !== '1d' : true; }, desc: 'Interactive two-variable 3D & single-variable 2D Taylor polynomial approximation with live order control, step-by-step term expansion, and SmartBoard canvas export.' },
         { id: 'u1_extrema', name: 'Extreme Values & Saddle Points', short: 'Extreme Values', icon: '🏔️', is3D: true, desc: 'Find local maxima, local minima, and saddle points using the Hessian discriminant D = fxx·fyy - fxy².' }
       ]
     },
@@ -161,7 +164,7 @@ const MathSimulations = (() => {
   // ─────────────────────────────────────────────────────────────────────────
   // SIMULATION STATE PARAMETERS & CUSTOM EQUATION SYSTEM
   // ─────────────────────────────────────────────────────────────────────────
-  const params = {
+  params = {
     // Unit I (Differential Calculus)
     u1_func: 'custom', // 'custom' | 'paraboloid' | 'saddle' | 'monkey' | 'ripple' | 'gauss'
     u1_customExpr: 'sin(x)*cos(y)',
@@ -1765,7 +1768,7 @@ const MathSimulations = (() => {
         <div class="ms-brand" onclick="MathSimulations.resetView()">
           <span class="ms-brand-icon">📐</span>
           <div>
-            <div class="ms-brand-title">U21MA101 / U25RMA101 · Mathematics Simulation Suite</div>
+            <div class="ms-brand-title">U25MA102 · Matrices and Calculus (Regulations 2025) · Simulation Suite</div>
             <div class="ms-brand-sub">Units I – V Laboratory · Smart Board</div>
           </div>
         </div>
